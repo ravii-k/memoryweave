@@ -1,0 +1,106 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# ── Project metadata ──────────────────────────────────────────────────────────
+# [Ravi Kashyap] 2026-03-23 - Core package metadata (Phase 1, Chapter 1.2)
+[project]
+name = "memoryweave"
+version = "0.0.1"
+description = "Universal long-term memory for any LLM application."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+  { name = "Ravi Kashyap", email = "ravi@example.com" }
+]
+keywords = [
+  "llm", "memory", "nlp", "ai", "openai", "anthropic",
+  "knowledge-graph", "vector-store", "langchain"
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+# ── Runtime dependencies ──────────────────────────────────────────────────────
+# [Ravi Kashyap] 2026-03-23 - Minimal deps for Phase 1 skeleton.
+# NLP + storage deps will be added in Phase 2 and Phase 3.
+dependencies = [
+  "pydantic>=2.0",
+]
+
+# ── Optional / extra dependencies ─────────────────────────────────────────────
+# [Ravi Kashyap] 2026-03-23 - Install extras with: pip install memoryweave[openai]
+[project.optional-dependencies]
+openai = ["openai>=1.0"]
+anthropic = ["anthropic>=0.20"]
+chroma = ["chromadb>=0.4"]
+qdrant = ["qdrant-client>=1.7"]
+nlp = ["spacy>=3.7", "sentence-transformers>=2.2"]
+all = [
+  "openai>=1.0",
+  "anthropic>=0.20",
+  "chromadb>=0.4",
+  "qdrant-client>=1.7",
+  "spacy>=3.7",
+  "sentence-transformers>=2.2",
+]
+dev = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+  "pytest-asyncio>=0.23",
+  "ruff>=0.3",
+  "mypy>=1.8",
+  "pre-commit>=3.6",
+  "pydocstyle>=6.3",
+]
+
+# ── Project URLs ───────────────────────────────────────────────────────────────
+[project.urls]
+Homepage = "https://github.com/ravii-k/memoryweave"
+Documentation = "https://github.com/ravii-k/memoryweave/tree/main/docs"
+Repository = "https://github.com/ravii-k/memoryweave"
+"Bug Tracker" = "https://github.com/ravii-k/memoryweave/issues"
+Changelog = "https://github.com/ravii-k/memoryweave/blob/main/CHANGELOG.md"
+
+# ── Package discovery ──────────────────────────────────────────────────────────
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["memoryweave*"]
+
+# ── Ruff (linter + formatter) ──────────────────────────────────────────────────
+# [Ravi Kashyap] 2026-03-23 - Ruff replaces both flake8 and black.
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "ANN", "D"]
+ignore = [
+  "D100",  # missing docstring in public module (handled per-file)
+  "D104",  # missing docstring in public package
+  "ANN101", # missing type annotation for self
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# ── Pytest ─────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--cov=memoryweave --cov-report=term-missing --cov-fail-under=20"
+
+# ── Mypy ───────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
