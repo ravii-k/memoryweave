@@ -12,7 +12,7 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 authors = [
-  { name = "Ravi Kashyap", email = "ravi@example.com" }
+  { name = "Ravi Kashyap", email = "kashyap01212@gmail.com" }
 ]
 keywords = [
   "llm", "memory", "nlp", "ai", "openai", "anthropic",
