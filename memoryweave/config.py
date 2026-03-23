@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class MemoryConfig(BaseModel):
@@ -110,5 +110,15 @@ class MemoryConfig(BaseModel):
         default="",
         description="API key for the selected LLM adapter.",
     )
+
+    @model_validator(mode="after")
+    def weights_must_sum_to_one(self) -> MemoryConfig:
+        """Ensure vector_weight and graph_weight always sum to 1.0."""
+        total = self.vector_weight + self.graph_weight
+        if round(total, 10) != 1.0:
+            raise ValueError(
+                f"vector_weight + graph_weight must equal 1.0, got {total}"
+            )
+        return self
 
     model_config = {"frozen": False}

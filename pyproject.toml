@@ -26,6 +26,8 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+"Programming Language :: Python :: 3.13",
+"Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
@@ -89,6 +91,8 @@ ignore = [
   "D104",  # missing docstring in public package
   "ANN101", # missing type annotation for self
 ]
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN201", "ANN001", "D101", "D102", "D103"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
