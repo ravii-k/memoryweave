@@ -1,22 +1,16 @@
-"""LLM adapter package for MemoryWeave.
+"""LLM adapters — automatic context injection for each supported LLM SDK.
 
-Adapters handle automatic context injection into LLM API calls.
-Each adapter wraps a specific LLM SDK and injects MemoryContext
-into the messages before sending.
+Each adapter wraps a specific LLM SDK and handles injecting MemoryContext
+into the messages automatically. Without an adapter users have to do the
+injection manually — which works fine but adapters make it seamless.
 
-Available adapters (implemented in Phase 4, Chapter 4.3):
-- OpenAIAdapter    — for OpenAI GPT models
-- AnthropicAdapter — for Anthropic Claude models
-- OllamaAdapter    — for local models via Ollama
-
-Author: Ravi Kashyap
-Created: 2026-03-23 (Phase 1, Chapter 1.2)
+Keeping this empty for now. All three adapters get built in Phase 4,
+Chapter 4.3. Uncommenting the imports below is how they get exposed.
 """
 
-# TODO [Ravi Kashyap] 2026-03-23 - Export adapters here once implemented.
 # Phase 4, Chapter 4.3:
-# from memoryweave.adapters.openai import OpenAIAdapter      # noqa: F401
-# from memoryweave.adapters.anthropic import AnthropicAdapter # noqa: F401
-# from memoryweave.adapters.ollama import OllamaAdapter      # noqa: F401
+# from memoryweave.adapters.openai import OpenAIAdapter        # noqa: F401
+# from memoryweave.adapters.anthropic import AnthropicAdapter  # noqa: F401
+# from memoryweave.adapters.ollama import OllamaAdapter        # noqa: F401
 
 __all__: list[str] = []

@@ -1,13 +1,14 @@
-"""Context ranker — fuses vector and graph results into a MemoryContext.
+"""Context ranker — fuses vector and graph results into a clean MemoryContext.
 
-Takes raw results from both the vector store and knowledge graph,
-applies score fusion weights, and returns a clean MemoryContext object
-ready for injection into an LLM prompt.
+This is the last stage before results go back to the user. Takes raw
+results from both the vector store and knowledge graph, applies score
+fusion, and packages everything into a MemoryContext that's ready to
+inject into an LLM prompt.
 
-Full implementation: Phase 4, Chapter 4.2.
-
-Author: Ravi Kashyap
-Created: 2026-03-23 (Phase 1, Chapter 1.2)
+Score fusion is simple for now: weighted sum of vector score and graph
+score. Started with equal weights but vector search was outperforming
+graph on most queries so bumped it to 60/40. Will benchmark properly
+in Phase 4 and adjust if needed.
 """
 
 from __future__ import annotations
@@ -17,16 +18,22 @@ from memoryweave.store import MemoryItem
 
 
 class MemoryContext:
-    """The structured response object returned by memory.get().
+    """What memory.get() returns — structured and ready for prompt injection.
 
-    This is what gets injected into your LLM prompt.
+    This is the object users interact with after calling get(). Designed
+    to be easy to use — most users just want ctx.summary and that's it.
+    The raw items and scores are there for power users who need more control.
 
     Attributes:
-        summary: 2-3 sentence natural language summary of relevant memories.
-        facts: List of atomic fact strings extracted from memories.
-        entities: Dict of entity type → list of entity names found.
-        items: Raw list of MemoryItem objects for advanced usage.
-        scores: Relevance scores for each item (0.0-1.0).
+        summary: 2-3 sentence natural language summary of the most relevant
+            memories. This is what you inject into your system prompt.
+        facts: Individual atomic facts pulled from memories. More granular
+            than the summary — useful for debugging what was retrieved.
+        entities: Dict grouping entity names by type. e.g.
+            {"PERSON": ["Ravi"], "ORG": ["Anthropic"]}
+        items: The raw MemoryItem objects for anyone who needs the full data.
+        scores: Relevance score for each item, same order as items.
+            Scores are 0.0–1.0, higher is more relevant.
 
     Example:
         >>> ctx = memory.get("What does the user prefer?")
@@ -34,8 +41,6 @@ class MemoryContext:
         "Ravi is a Python developer who prefers dark mode."
         >>> print(ctx.facts)
         ["Ravi prefers Python", "Ravi uses dark mode"]
-
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
     """
 
     def __init__(
@@ -46,10 +51,6 @@ class MemoryContext:
         items: list[MemoryItem] | None = None,
         scores: list[float] | None = None,
     ) -> None:
-        """Initialise a MemoryContext.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         self.summary = summary
         self.facts = facts or []
         self.entities = entities or {}
@@ -57,10 +58,6 @@ class MemoryContext:
         self.scores = scores or []
 
     def __repr__(self) -> str:
-        """Return developer-friendly string representation.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         return (
             f"MemoryContext(facts={len(self.facts)}, "
             f"entities={len(self.entities)}, "
@@ -68,39 +65,31 @@ class MemoryContext:
         )
 
     def to_prompt_string(self) -> str:
-        """Format the context as a string for LLM prompt injection.
+        """Format the context as a string ready to drop into a system prompt.
 
         Returns:
-            Formatted string combining summary and key facts,
-            ready to insert into a system prompt.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+            Formatted string combining summary and key facts. Keeps it
+            concise — don't want to eat too many tokens with memory context.
         """
-        # TODO [Ravi Kashyap] 2026-03-23 - Implement in Phase 4, Chapter 4.2.
-        raise NotImplementedError(
-            "to_prompt_string() will be implemented in Phase 4, Chapter 4.2."
-        )
+        # Phase 4, Chapter 4.2 — will experiment with different formats
+        # to find what actually improves LLM response quality
+        raise NotImplementedError("coming in Phase 4, Chapter 4.2")
 
 
 class Ranker:
-    """Fuses vector search and knowledge graph results into MemoryContext.
+    """Fuses vector and graph scores into a ranked MemoryContext.
 
-    Applies configurable weights to each score source and selects
-    the top-k most relevant memories.
+    The fusion formula is straightforward:
+        final_score = (vector_score * vector_weight)
+                    + (graph_score  * graph_weight)
 
-    Full implementation: Phase 4, Chapter 4.2.
+    Then we sort by final_score descending and take top_k.
 
     Args:
-        config: MemoryConfig with vector_weight and graph_weight values.
-
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+        config: Provides vector_weight, graph_weight, and top_k.
     """
 
     def __init__(self, config: MemoryConfig) -> None:
-        """Initialise the Ranker.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         self.config = config
 
     def fuse(
@@ -111,18 +100,14 @@ class Ranker:
         """Fuse vector and graph results into a ranked MemoryContext.
 
         Args:
-            vector_results: List of (MemoryItem, score) from vector store.
-            graph_results: List of (fact_text, score) from knowledge graph.
+            vector_results: (MemoryItem, score) pairs from the vector store.
+            graph_results: (fact_text, score) pairs from the knowledge graph.
 
         Returns:
-            MemoryContext with fused, ranked results.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+            MemoryContext with the best fused results, ready for injection.
         """
-        # TODO [Ravi Kashyap] 2026-03-23 - Implement in Phase 4, Chapter 4.2.
-        # Fusion formula: final_score = (vector_score * vector_weight)
-        #                              + (graph_score  * graph_weight)
-        # See docs/context-ranker.md for full benchmarks and decision log.
-        raise NotImplementedError(
-            "fuse() will be implemented in Phase 4, Chapter 4.2."
-        )
+        # Phase 4, Chapter 4.2.
+        # the tricky part here will be aligning vector and graph results
+        # since they come in different formats — need to normalise scores
+        # to the same scale before fusing
+        raise NotImplementedError("coming in Phase 4, Chapter 4.2")

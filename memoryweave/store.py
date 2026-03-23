@@ -1,12 +1,15 @@
-"""Vector store abstraction — unified interface for all storage backends.
+"""Vector store abstraction — one interface, multiple backends.
 
-Defines the BaseStore interface and a factory method. Concrete
-implementations (Chroma, Qdrant, in-memory) are registered here.
+The idea is simple: the rest of the codebase never talks to ChromaDB
+or Qdrant directly. Everything goes through BaseStore. That way swapping
+backends is just a config change, not a code change.
 
-Full implementation: Phase 3, Chapter 3.2.
+Three backends planned:
+- InMemoryStore  — default, zero setup, no persistence (good for dev/testing)
+- ChromaStore    — local persistence, easy to self-host
+- QdrantStore    — production-grade, good for scale
 
-Author: Ravi Kashyap
-Created: 2026-03-23 (Phase 1, Chapter 1.2)
+All three get implemented in Phase 3, Chapter 3.2.
 """
 
 from __future__ import annotations
@@ -19,14 +22,16 @@ from memoryweave.config import MemoryConfig
 class MemoryItem:
     """A single memory item stored in the vector store.
 
-    Attributes:
-        id: Unique identifier for this memory item.
-        text: Original raw text this memory was created from.
-        embedding: Dense vector representation of the text.
-        session_id: Session namespace this memory belongs to.
-        metadata: Arbitrary key-value metadata (timestamps, source, etc.)
+    Wraps the raw text, its embedding, and some metadata together.
+    The metadata dict is flexible — callers can store timestamps,
+    source info, importance scores, whatever they need.
 
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+    Attributes:
+        id: Unique ID for this memory. Using UUIDs in the implementation.
+        text: The original raw text this memory was built from.
+        embedding: Dense vector representation of the text.
+        session_id: Which user/session this memory belongs to.
+        metadata: Freeform key-value store for extra info.
     """
 
     def __init__(
@@ -37,34 +42,25 @@ class MemoryItem:
         session_id: str = "default",
         metadata: dict | None = None,
     ) -> None:
-        """Initialise a MemoryItem.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         self.id = id
         self.text = text
         self.embedding = embedding
         self.session_id = session_id
+        # using None default to avoid the mutable default argument trap
         self.metadata = metadata or {}
 
     def __repr__(self) -> str:
-        """Return developer-friendly string representation.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         return f"MemoryItem(id={self.id!r}, session={self.session_id!r})"
 
 
 class BaseStore(ABC):
-    """Abstract base class for all vector store backends.
+    """Abstract interface for all vector store backends.
 
-    All concrete stores (Chroma, Qdrant, in-memory) must implement
-    these methods. This ensures the client code never depends on a
-    specific backend — swap backends via MemoryConfig with zero code change.
+    Every backend must implement these three methods. The factory
+    method at the bottom handles choosing the right one from config.
 
-    Full implementation: Phase 3, Chapter 3.2.
-
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+    Keeping the interface minimal on purpose — add(), search(),
+    delete_session(). Anything fancier can go in the concrete classes.
     """
 
     @abstractmethod
@@ -72,9 +68,7 @@ class BaseStore(ABC):
         """Store a single MemoryItem.
 
         Args:
-            item: The memory item to store.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+            item: The memory item to store, including its embedding.
         """
 
     @abstractmethod
@@ -84,51 +78,45 @@ class BaseStore(ABC):
         session_id: str,
         top_k: int,
     ) -> list[tuple[MemoryItem, float]]:
-        """Search for the most similar memories by embedding.
+        """Find the most similar memories by embedding distance.
 
         Args:
             query_embedding: Dense vector of the search query.
-            session_id: Session namespace to search within.
-            top_k: Maximum number of results to return.
+            session_id: Only search within this session's memories.
+            top_k: How many results to return.
 
         Returns:
-            List of (MemoryItem, score) tuples, sorted by score descending.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+            List of (MemoryItem, score) tuples, best match first.
+            Score is cosine similarity — higher is more relevant.
         """
 
     @abstractmethod
     def delete_session(self, session_id: str) -> None:
-        """Delete all memories for a session.
+        """Wipe all memories for a given session.
 
         Args:
-            session_id: Session namespace to clear.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+            session_id: The session to clear completely.
         """
 
     @classmethod
     def create(cls, config: MemoryConfig) -> "BaseStore":
-        """Factory method — create the correct store from config.
+        """Factory — picks the right backend from the config.
 
         Args:
-            config: MemoryConfig controlling which backend to create.
+            config: MemoryConfig with store_type set.
 
         Returns:
-            A concrete BaseStore instance.
+            A concrete BaseStore instance ready to use.
 
         Raises:
-            ConfigurationError: If store_type is not recognised.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+            ConfigurationError: If store_type isn't recognised.
         """
-        # TODO [Ravi Kashyap] 2026-03-23 - Wire up backends in Phase 3, Ch 3.2.
+        # will wire up all three backends in Phase 3, Chapter 3.2.
+        # the pattern will be a simple if/elif on config.store_type
         # if config.store_type == "memory":
         #     return InMemoryStore(config)
         # elif config.store_type == "chroma":
         #     return ChromaStore(config)
         # elif config.store_type == "qdrant":
         #     return QdrantStore(config)
-        raise NotImplementedError(
-            "BaseStore.create() will be implemented in Phase 3, Chapter 3.2."
-        )
+        raise NotImplementedError("coming in Phase 3, Chapter 3.2")

@@ -1,11 +1,10 @@
 """Tests for the MemoryWeave client.
 
-Phase 1 tests only verify the client initialises correctly and that
-stub methods raise NotImplementedError as expected. Full behaviour
-tests will be added in Phase 4 when the methods are implemented.
+Phase 1 tests are limited to init behaviour and checking that the stub
+methods raise NotImplementedError correctly. Not much to test yet since
+nothing is implemented — the real behaviour tests come in Phase 4.
 
-Author: Ravi Kashyap
-Created: 2026-03-23 (Phase 1, Chapter 1.2)
+Keeping these here so the test structure is in place and ready to expand.
 """
 
 import pytest
@@ -15,26 +14,23 @@ from memoryweave.config import MemoryConfig
 
 
 class TestMemoryWeaveInit:
-    """Tests that MemoryWeave initialises correctly.
-
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-    """
+    """Basic init tests — make sure the client sets itself up correctly."""
 
     def test_default_init(self) -> None:
-        """Should initialise with default config when none is passed."""
+        """No config passed — should fall back to MemoryConfig defaults."""
         memory = MemoryWeave()
         assert memory.config is not None
         assert memory.config.store_type == "memory"
 
     def test_custom_config(self) -> None:
-        """Should use the provided config when passed."""
+        """Config passed in — should use it, not the defaults."""
         config = MemoryConfig(top_k=10, store_type="chroma")
         memory = MemoryWeave(config=config)
         assert memory.config.top_k == 10
         assert memory.config.store_type == "chroma"
 
     def test_repr(self) -> None:
-        """Should return a useful string representation."""
+        """repr should be useful for debugging — show store type and top_k."""
         memory = MemoryWeave()
         result = repr(memory)
         assert "MemoryWeave" in result
@@ -42,27 +38,27 @@ class TestMemoryWeaveInit:
 
 
 class TestMemoryWeaveStubs:
-    """Tests that stub methods raise NotImplementedError correctly.
+    """Stub methods should raise NotImplementedError until they're built.
 
     These tests will be replaced with real behaviour tests in Phase 4.
-
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+    For now they just confirm the stubs are wired up and not silently
+    returning None or doing something unexpected.
     """
 
     def test_add_raises_not_implemented(self) -> None:
-        """memory.add() should raise NotImplementedError until Phase 4."""
+        """add() is a Phase 4 thing — should be loud about it."""
         memory = MemoryWeave()
         with pytest.raises(NotImplementedError):
             memory.add("Some text")
 
     def test_get_raises_not_implemented(self) -> None:
-        """memory.get() should raise NotImplementedError until Phase 4."""
+        """get() is a Phase 4 thing — should be loud about it."""
         memory = MemoryWeave()
         with pytest.raises(NotImplementedError):
             memory.get("Some query")
 
     def test_forget_raises_not_implemented(self) -> None:
-        """memory.forget() should raise NotImplementedError until Phase 6."""
+        """forget() is a Phase 6 thing — should be loud about it."""
         memory = MemoryWeave()
         with pytest.raises(NotImplementedError):
             memory.forget()

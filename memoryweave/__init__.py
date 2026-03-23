@@ -1,7 +1,7 @@
 """MemoryWeave — Universal long-term memory for any LLM application.
 
-Gives any AI application persistent, searchable memory across sessions,
-users, and models. Plug in with 3 lines of code.
+Plug into any LLM app with 3 lines of code. Handles extraction,
+storage, and retrieval automatically.
 
     >>> import memoryweave
     >>> memory = memoryweave.MemoryWeave()
@@ -9,28 +9,25 @@ users, and models. Plug in with 3 lines of code.
     >>> ctx = memory.get("What language does the user prefer?")
 
 Author: Ravi Kashyap
-GitHub: https://github.com/ravii-k/memoryweave
-Created: 2026-03-23 (Phase 1, Chapter 1.2)
+GitHub: https://github.com/ravii-k
+Email: kashyap01212@gmail.com
+Started: March 2026
 """
 
-# [Ravi Kashyap] 2026-03-23 - Single source of truth for the version number.
-# Bump this in pyproject.toml AND here on every release.
+# keeping version in sync with pyproject.toml manually for now —
+# might automate this with bump2version later
 __version__ = "0.0.1"
 __author__ = "Ravi Kashyap"
 __license__ = "MIT"
 
-# [Ravi Kashyap] 2026-03-23 - Public API surface.
-# Only import what users should access directly via `memoryweave.X`.
-# Internal modules should never be imported from here.
-# Phase 4 will populate these imports once the classes are implemented.
+# only exposing MemoryConfig here for now since the main client
+# isn't ready yet — will uncomment MemoryWeave once Phase 4 is done
 from memoryweave.config import MemoryConfig  # noqa: F401
 
-# TODO [Ravi Kashyap] 2026-03-23 - Uncomment as each phase completes.
-# Tracked: will be enabled in Phase 4, Chapter 4.1
-# from memoryweave.client import MemoryWeave      # noqa: F401
+# from memoryweave.client import MemoryWeave  # Phase 4
 
 __all__ = [
     "__version__",
     "MemoryConfig",
-    # "MemoryWeave",    # Phase 4
+    # "MemoryWeave",  # coming in Phase 4
 ]

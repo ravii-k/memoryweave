@@ -1,17 +1,16 @@
-"""NLP extraction pipeline — entity and fact extraction from raw text.
+"""NLP extraction pipeline — pulls entities and facts out of raw text.
 
-Takes raw text and returns structured EntityResult and FactResult objects.
-This module is the first stage of the memory.add() pipeline.
+This is the first stage of the memory.add() pipeline. Raw text goes in,
+structured EntityResult and FactResult objects come out.
 
-Full implementation: Phase 2, Chapters 2.1 and 2.2.
-
-Author: Ravi Kashyap
-Created: 2026-03-23 (Phase 1, Chapter 1.2)
+Went with spaCy as the primary extractor because it's fast, well-tested,
+and runs offline. GLiNER is a good fallback for custom entity types that
+spaCy's pretrained models miss — will wire that up in Phase 2.
 """
 
 from __future__ import annotations
 
-# TODO [Ravi Kashyap] 2026-03-23 - Uncomment in Phase 2, Chapter 2.1.
+# will be uncommented in Phase 2, Chapter 2.1
 # import spacy
 # from gliner import GLiNER
 
@@ -19,16 +18,15 @@ from memoryweave.config import MemoryConfig
 
 
 class EntityResult:
-    """Represents a single extracted entity from text.
+    """A single entity extracted from text.
 
     Attributes:
-        text: The entity surface form (e.g. "Ravi Kashyap").
-        label: Entity type (e.g. "PERSON", "ORG", "DATE", "GPE").
-        confidence: Extraction confidence score (0.0–1.0).
-        start: Character offset start in the source text.
-        end: Character offset end in the source text.
-
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+        text: The entity as it appears in the source text (e.g. "Ravi Kashyap").
+        label: Entity type — PERSON, ORG, DATE, GPE, etc.
+        confidence: How confident the model is. spaCy doesn't give this
+            directly so we default to 1.0 and adjust in GLiNER fallback.
+        start: Character offset where the entity starts in the source text.
+        end: Character offset where it ends.
     """
 
     def __init__(
@@ -39,10 +37,6 @@ class EntityResult:
         start: int = 0,
         end: int = 0,
     ) -> None:
-        """Initialise an EntityResult.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         self.text = text
         self.label = label
         self.confidence = confidence
@@ -50,24 +44,22 @@ class EntityResult:
         self.end = end
 
     def __repr__(self) -> str:
-        """Return developer-friendly string representation.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         return f"EntityResult(text={self.text!r}, label={self.label!r})"
 
 
 class FactResult:
-    """Represents a single extracted fact (subject-predicate-object triple).
+    """A single fact as a subject-predicate-object triple.
+
+    Keeping it simple with SPO triples for now. Might move to a more
+    expressive representation later if the graph queries need it.
 
     Attributes:
-        subject: The entity the fact is about (e.g. "Ravi").
-        predicate: The relationship (e.g. "prefers").
-        obj: The object of the fact (e.g. "Python").
+        subject: Who or what the fact is about (e.g. "Ravi").
+        predicate: The relationship (e.g. "prefers", "works at").
+        obj: The object of the fact (e.g. "Python", "Anthropic").
         confidence: Extraction confidence score (0.0–1.0).
-        temporal: Optional time reference (e.g. "since 2020").
-
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+        temporal: Time reference if there is one (e.g. "since 2022").
+            Empty string if the fact has no temporal component.
     """
 
     def __init__(
@@ -78,10 +70,6 @@ class FactResult:
         confidence: float = 1.0,
         temporal: str = "",
     ) -> None:
-        """Initialise a FactResult.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         self.subject = subject
         self.predicate = predicate
         self.obj = obj
@@ -89,73 +77,57 @@ class FactResult:
         self.temporal = temporal
 
     def __repr__(self) -> str:
-        """Return developer-friendly string representation.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         return (
             f"FactResult({self.subject!r} {self.predicate!r} {self.obj!r})"
         )
 
 
 class Extractor:
-    """NLP pipeline for extracting entities and facts from raw text.
+    """Runs entity and fact extraction on raw text.
 
-    Runs two sub-pipelines:
-    1. Entity extraction (spaCy + GLiNER fallback)
-    2. Fact extraction (subject-predicate-object triples)
+    Two sub-pipelines:
+    1. Entity extraction — spaCy + GLiNER fallback for custom types
+    2. Fact extraction — subject-predicate-object triples
 
-    Full implementation: Phase 2, Chapters 2.1 and 2.2.
+    Both get implemented in Phase 2. The dataclasses above are ready
+    so Phase 3 and 4 can reference them without waiting.
 
     Args:
-        config: MemoryConfig instance controlling the spaCy model used.
-
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+        config: Controls which spaCy model to load.
     """
 
     def __init__(self, config: MemoryConfig) -> None:
-        """Initialise the Extractor.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
-        """
         self.config = config
-        # TODO [Ravi Kashyap] 2026-03-23 - Load spaCy model here in Phase 2.
+        # loading the spaCy model on init so we pay the cost once,
+        # not on every add() call — will uncomment in Phase 2
         # self._nlp = spacy.load(config.spacy_model)
 
     def extract_entities(self, text: str) -> list[EntityResult]:
-        """Extract named entities from raw text.
+        """Pull named entities out of raw text.
 
         Args:
             text: Raw input text to process.
 
         Returns:
-            List of EntityResult objects, one per detected entity.
+            List of EntityResult objects. Empty list if none found.
 
         Raises:
-            ExtractionError: If the NLP model fails to process the text.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+            ExtractionError: If the model fails or text is empty.
         """
-        # TODO [Ravi Kashyap] 2026-03-23 - Implement in Phase 2, Chapter 2.1.
-        raise NotImplementedError(
-            "extract_entities() will be implemented in Phase 2, Chapter 2.1."
-        )
+        # Phase 2, Chapter 2.1
+        raise NotImplementedError("coming in Phase 2, Chapter 2.1")
 
     def extract_facts(self, text: str) -> list[FactResult]:
-        """Extract subject-predicate-object fact triples from raw text.
+        """Pull subject-predicate-object triples out of raw text.
 
         Args:
             text: Raw input text to process.
 
         Returns:
-            List of FactResult objects, one per detected fact.
+            List of FactResult objects. Empty list if none found.
 
         Raises:
-            ExtractionError: If the NLP model fails to process the text.
-
-        Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
+            ExtractionError: If the model fails or text is empty.
         """
-        # TODO [Ravi Kashyap] 2026-03-23 - Implement in Phase 2, Chapter 2.2.
-        raise NotImplementedError(
-            "extract_facts() will be implemented in Phase 2, Chapter 2.2."
-        )
+        # Phase 2, Chapter 2.2
+        raise NotImplementedError("coming in Phase 2, Chapter 2.2")

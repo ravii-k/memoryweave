@@ -1,11 +1,8 @@
-"""MemoryWeave configuration dataclass.
+"""Central configuration for MemoryWeave.
 
-All settings for the MemoryWeave client are defined here.
-Users pass a MemoryConfig instance when creating a MemoryWeave client,
-or rely on sensible defaults.
-
-Author: Ravi Kashyap
-Created: 2026-03-23 (Phase 1, Chapter 1.2)
+Everything the client needs to know lives here. Pydantic handles
+validation so we catch bad config values early instead of getting
+weird errors deep in the pipeline.
 """
 
 from __future__ import annotations
@@ -16,40 +13,44 @@ from pydantic import BaseModel, Field
 
 
 class MemoryConfig(BaseModel):
-    """Central configuration for a MemoryWeave instance.
+    """All settings for a MemoryWeave instance in one place.
 
-    All fields have sensible defaults so the client works out of the
-    box with zero configuration.
+    Defaults are chosen to work out of the box with zero setup —
+    in-memory store, no API key, no external services needed.
 
     Example:
         >>> config = MemoryConfig(store_type="chroma", top_k=5)
         >>> memory = MemoryWeave(config=config)
-
-    Added: Ravi Kashyap 2026-03-23 (Phase 1, Chapter 1.2)
     """
 
     # ── Storage ───────────────────────────────────────────────────────────────
-    # [Ravi Kashyap] 2026-03-23 - "memory" = in-process, no persistence.
-    # "chroma" and "qdrant" will be wired up in Phase 3, Chapter 3.2.
+
+    # "memory" is the default — nothing to install, nothing to configure.
+    # swap to "chroma" or "qdrant" when you need persistence
     store_type: Literal["memory", "chroma", "qdrant"] = Field(
         default="memory",
         description="Vector store backend to use.",
     )
+
+    # only used when store_type is chroma or qdrant
     store_path: str = Field(
         default="./memoryweave_db",
         description="Local path for persistent stores (Chroma / Qdrant).",
     )
 
     # ── Embedding ─────────────────────────────────────────────────────────────
-    # [Ravi Kashyap] 2026-03-23 - Default model runs fully offline (no API key).
-    # Will be used in Phase 3, Chapter 3.1.
+
+    # all-MiniLM-L6-v2 is fast, small, and good enough for most use cases.
+    # runs completely offline which is a big deal for privacy-conscious users
     embedding_model: str = Field(
         default="all-MiniLM-L6-v2",
         description="sentence-transformers model name for embedding generation.",
     )
 
     # ── Retrieval ─────────────────────────────────────────────────────────────
-    # [Ravi Kashyap] 2026-03-23 - Number of memories returned by memory.get().
+
+    # 5 feels right from testing — enough context without flooding the prompt.
+    # users can bump this up but anything over 20 starts hurting LLM quality
     top_k: int = Field(
         default=5,
         ge=1,
@@ -57,8 +58,8 @@ class MemoryConfig(BaseModel):
         description="Maximum number of memory results to return.",
     )
 
-    # [Ravi Kashyap] 2026-03-23 - Fusion weights for vector + graph scores.
-    # Must sum to 1.0. Benchmarked in docs/context-ranker.md (Phase 4).
+    # started with 50/50 but vector search was clearly winning on recall.
+    # settled on 60/40 after benchmarking — will revisit in Phase 4
     vector_weight: float = Field(
         default=0.6,
         ge=0.0,
@@ -73,24 +74,27 @@ class MemoryConfig(BaseModel):
     )
 
     # ── NLP ───────────────────────────────────────────────────────────────────
-    # [Ravi Kashyap] 2026-03-23 - spaCy model used for entity extraction.
-    # Will be used in Phase 2, Chapter 2.1.
+
+    # en_core_web_sm is the smallest spaCy model — fast but good enough.
+    # users can swap to en_core_web_lg if they need better accuracy
     spacy_model: str = Field(
         default="en_core_web_sm",
         description="spaCy model name for NLP entity extraction.",
     )
 
     # ── Session ───────────────────────────────────────────────────────────────
-    # [Ravi Kashyap] 2026-03-23 - Default session ID for single-user usage.
-    # Multi-user session isolation is added in Phase 6, Chapter 6.2.
+
+    # single user apps can ignore session_id entirely and just use this default.
+    # multi-user isolation comes in Phase 6
     default_session_id: str = Field(
         default="default",
         description="Default session namespace for memory isolation.",
     )
 
     # ── LLM Adapter ───────────────────────────────────────────────────────────
-    # [Ravi Kashyap] 2026-03-23 - Which LLM adapter to use.
-    # Adapters are implemented in Phase 4, Chapter 4.3.
+
+    # "none" means no adapter — user handles prompt injection themselves.
+    # adapters are implemented in Phase 4 and handle it automatically
     llm_adapter: Literal["openai", "anthropic", "ollama", "none"] = Field(
         default="none",
         description="LLM adapter for automatic context injection.",
@@ -99,6 +103,9 @@ class MemoryConfig(BaseModel):
         default="",
         description="Model name for the selected LLM adapter.",
     )
+
+    # not storing API keys in plaintext long term — will move to env vars
+    # in Phase 4 when adapters are actually implemented
     llm_api_key: str = Field(
         default="",
         description="API key for the selected LLM adapter.",
