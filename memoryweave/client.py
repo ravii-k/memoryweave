@@ -72,8 +72,7 @@ class MemoryWeave:
         # full pipeline gets wired in Phase 4, Chapter 4.1
         _session = session_id or self.config.default_session_id
         raise NotImplementedError(
-            "coming in Phase 4 — "
-            f"session={_session!r}, text_length={len(text)}"
+            f"coming in Phase 4 — session={_session!r}, text_length={len(text)}"
         )
 
     def get(self, query: str, session_id: str | None = None) -> object:
@@ -96,8 +95,7 @@ class MemoryWeave:
         # full implementation in Phase 4, Chapter 4.2
         _session = session_id or self.config.default_session_id
         raise NotImplementedError(
-            "coming in Phase 4 — "
-            f"session={_session!r}, query={query!r}"
+            f"coming in Phase 4 — session={_session!r}, query={query!r}"
         )
 
     def forget(self, session_id: str | None = None) -> None:
@@ -111,6 +109,5 @@ class MemoryWeave:
 
     def __repr__(self) -> str:
         return (
-            f"MemoryWeave(store={self.config.store_type!r}, "
-            f"top_k={self.config.top_k})"
+            f"MemoryWeave(store={self.config.store_type!r}, top_k={self.config.top_k})"
         )
