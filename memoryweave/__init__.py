@@ -20,14 +20,16 @@ __version__ = "0.0.1"
 __author__ = "Ravi Kashyap"
 __license__ = "MIT"
 
-# only exposing MemoryConfig here for now since the main client
-# isn't ready yet — will uncomment MemoryWeave once Phase 4 is done
+# only exposing MemoryConfig and configure_logging here for now.
+# MemoryWeave client gets uncommented once Phase 4 is done
 from memoryweave.config import MemoryConfig  # noqa: F401
+from memoryweave.logger import configure_logging  # noqa: F401
 
 # from memoryweave.client import MemoryWeave  # Phase 4
 
 __all__ = [
     "__version__",
     "MemoryConfig",
+    "configure_logging",
     # "MemoryWeave",  # coming in Phase 4
 ]
