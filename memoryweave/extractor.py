@@ -13,7 +13,6 @@ from __future__ import annotations
 # will be uncommented in Phase 2, Chapter 2.1
 # import spacy
 # from gliner import GLiNER
-
 from memoryweave.config import MemoryConfig
 
 
@@ -77,9 +76,7 @@ class FactResult:
         self.temporal = temporal
 
     def __repr__(self) -> str:
-        return (
-            f"FactResult({self.subject!r} {self.predicate!r} {self.obj!r})"
-        )
+        return f"FactResult({self.subject!r} {self.predicate!r} {self.obj!r})"
 
 
 class Extractor:

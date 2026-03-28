@@ -87,12 +87,22 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "ANN", "D"]
 ignore = [
-  "D100",  # missing docstring in public module (handled per-file)
-  "D104",  # missing docstring in public package
+  "D100",   # missing docstring in public module
+  "D104",   # missing docstring in public package
+  "D105",   # missing docstring in magic method (__repr__ etc)
+  "D107",   # missing docstring in __init__
+  "D403",   # first word should be capitalized
   "ANN101", # missing type annotation for self
+  "UP037",  # remove quotes from type annotation
 ]
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN201", "ANN001", "D101", "D102", "D103"]
+
+"tests/*" = [
+  "D100", "D101", "D102", "D104", "D105", "D107", "D403",
+  "ANN101", "ANN201",
+  "UP037"
+]
+
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

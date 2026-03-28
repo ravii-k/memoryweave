@@ -18,7 +18,6 @@ from __future__ import annotations
 
 # will be uncommented in Phase 3, Chapter 3.3
 # import networkx as nx
-
 from memoryweave.config import MemoryConfig
 from memoryweave.extractor import EntityResult, FactResult
 
@@ -45,9 +44,7 @@ class KnowledgeGraph:
         # initialised lazily — graph only created when first add() happens
         # self._graphs: dict[str, nx.DiGraph] = {}
 
-    def add_entities(
-        self, entities: list[EntityResult], session_id: str
-    ) -> None:
+    def add_entities(self, entities: list[EntityResult], session_id: str) -> None:
         """Add extracted entities as nodes in the session graph.
 
         If an entity node already exists we update it rather than
@@ -60,9 +57,7 @@ class KnowledgeGraph:
         # Phase 3, Chapter 3.3
         raise NotImplementedError("coming in Phase 3, Chapter 3.3")
 
-    def add_facts(
-        self, facts: list[FactResult], session_id: str
-    ) -> None:
+    def add_facts(self, facts: list[FactResult], session_id: str) -> None:
         """Add extracted facts as directed edges between entity nodes.
 
         Subject and object become nodes if they don't exist yet.

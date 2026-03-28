@@ -13,7 +13,6 @@ from __future__ import annotations
 
 # will be uncommented in Phase 3, Chapter 3.1
 # from sentence_transformers import SentenceTransformer
-
 from memoryweave.config import MemoryConfig
 
 
