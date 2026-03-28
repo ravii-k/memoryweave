@@ -72,8 +72,7 @@ def configure_logging(level: str | int = "info") -> None:
         resolved = _LEVEL_MAP.get(level.lower())
         if resolved is None:
             raise ValueError(
-                f"Unknown log level {level!r}. "
-                f"Choose from: {list(_LEVEL_MAP.keys())}"
+                f"Unknown log level {level!r}. Choose from: {list(_LEVEL_MAP.keys())}"
             )
         level = resolved
 
