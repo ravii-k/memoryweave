@@ -92,7 +92,6 @@ ignore = [
   "D105",   # missing docstring in magic method (__repr__ etc)
   "D107",   # missing docstring in __init__
   "D403",   # first word should be capitalized
-  "ANN101", # missing type annotation for self
   "UP037",  # remove quotes from type annotation
 ]
 [tool.ruff.lint.per-file-ignores]
