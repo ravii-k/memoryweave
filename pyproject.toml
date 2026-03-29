@@ -37,6 +37,7 @@ classifiers = [
 # NLP + storage deps will be added in Phase 2 and Phase 3.
 dependencies = [
   "pydantic>=2.0",
+  "spacy>=3.7",
 ]
 
 # ── Optional / extra dependencies ─────────────────────────────────────────────
@@ -87,25 +88,21 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "ANN", "D"]
 ignore = [
-  "D100",   # missing docstring in public module
-  "D104",   # missing docstring in public package
-  "D105",   # missing docstring in magic method (__repr__ etc)
-  "D107",   # missing docstring in __init__
-  "D403",   # first word should be capitalized
-  "UP037",  # remove quotes from type annotation
+  "D100",
+  "D104",
+  "D105",
+  "D107",
+  "D403",
+  "UP037",
+  "ANN101",
+  "E741",
 ]
+
 [tool.ruff.lint.per-file-ignores]
-
-"tests/*" = [
-  "D100", "D101", "D102", "D104", "D105", "D107", "D403",
-  "ANN101", "ANN201",
-  "UP037"
-]
-
+"tests/*" = ["ANN201", "ANN001", "D101", "D102", "D103"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
-
 # ── Pytest ─────────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
 testpaths = ["tests"]
