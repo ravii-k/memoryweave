@@ -82,7 +82,7 @@ class FactResult:
         subject: Who or what the fact is about (e.g. "Ravi").
         predicate: The relationship (e.g. "prefers", "works at").
         obj: The object of the fact (e.g. "Python", "Anthropic").
-        confidence: Extraction confidence score (0.0–1.0).
+        confidence: Extraction confidence score (0.0-1.0).
         temporal: Time reference if there is one (e.g. "since 2022").
             Empty string if the fact has no temporal component.
     """
@@ -169,30 +169,7 @@ class Extractor:
         except Exception as e:
             raise ExtractionError(f"spaCy processing failed: {e}") from e
 
-        seen: set[tuple[str, str]] = set()
-        results: list[EntityResult] = []
-
-        for ent in doc.ents:
-            if ent.label_ not in _USEFUL_LABELS:
-                continue
-
-            key = (ent.text.strip(), ent.label_)
-            if key in seen:
-                continue
-            seen.add(key)
-
-            results.append(
-                EntityResult(
-                    text=ent.text.strip(),
-                    label=ent.label_,
-                    confidence=1.0,
-                    start=ent.start_char,
-                    end=ent.end_char,
-                )
-            )
-
-        logger.debug("found %d entities", len(results))
-        return results
+        return self._extract_entities_from_doc(doc)
 
     def extract_facts(self, text: str) -> list[FactResult]:
         """Extract subject-predicate-object triples from raw text.
@@ -225,22 +202,80 @@ class Extractor:
         except Exception as e:
             raise ExtractionError(f"spaCy processing failed: {e}") from e
 
+        return self._extract_facts_from_doc(doc)
+
+    def extract(self, text: str) -> tuple[list[EntityResult], list[FactResult]]:
+        """Run both entity and fact extraction in one call.
+
+        Convenience method — runs spaCy once and reuses the doc for both
+        pipelines instead of parsing the same text twice.
+
+        Args:
+            text: Raw input text to process.
+
+        Returns:
+            Tuple of (entities, facts).
+
+        Raises:
+            ExtractionError: If text is empty or the model fails.
+        """
+        if not text or not text.strip():
+            raise ExtractionError("cannot extract from empty text")
+
+        logger.debug("running full extraction pipeline on %d chars", len(text))
+
+        try:
+            doc = self._nlp(text)
+        except Exception as e:
+            raise ExtractionError(f"spaCy processing failed: {e}") from e
+
+        entities = self._extract_entities_from_doc(doc)
+        facts = self._extract_facts_from_doc(doc)
+
+        logger.debug(
+            "extraction complete — %d entities, %d facts",
+            len(entities),
+            len(facts),
+        )
+        return entities, facts
+
+    def _extract_entities_from_doc(self, doc: spacy.tokens.Doc) -> list[EntityResult]:
+        """Extract entities from an already-parsed spaCy doc."""
+        seen: set[tuple[str, str]] = set()
+        results: list[EntityResult] = []
+
+        for ent in doc.ents:
+            if ent.label_ not in _USEFUL_LABELS:
+                continue
+            key = (ent.text.strip(), ent.label_)
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append(
+                EntityResult(
+                    text=ent.text.strip(),
+                    label=ent.label_,
+                    confidence=1.0,
+                    start=ent.start_char,
+                    end=ent.end_char,
+                )
+            )
+        return results
+
+    def _extract_facts_from_doc(self, doc: spacy.tokens.Doc) -> list[FactResult]:
+        """Extract SPO fact triples from an already-parsed spaCy doc."""
         results: list[FactResult] = []
 
         for sent in doc.sents:
-            # find the root verb of each sentence
             root = next((token for token in sent if token.dep_ == "ROOT"), None)
             if root is None or root.pos_ not in ("VERB", "AUX"):
                 continue
 
-            # find subject — nsubj or nsubjpass
             subjects = [t for t in root.children if t.dep_ in ("nsubj", "nsubjpass")]
-            # find object — dobj, attr, prep objects
             objects = [
                 t for t in root.children if t.dep_ in ("dobj", "attr", "pobj", "acomp")
             ]
 
-            # also check prep phrases for objects like "works at Anthropic"
             for prep in root.children:
                 if prep.dep_ == "prep":
                     for pobj in prep.children:
@@ -250,12 +285,8 @@ class Extractor:
             if not subjects or not objects:
                 continue
 
-            subj = subjects[0]
-            obj = objects[0]
-
-            # get full noun phrase spans instead of just the head token
-            subj_text = self._get_span_text(subj)
-            obj_text = self._get_span_text(obj)
+            subj_text = self._get_span_text(subjects[0])
+            obj_text = self._get_span_text(objects[0])
             pred_text = root.lemma_.lower()
 
             if not subj_text or not obj_text:
@@ -266,11 +297,9 @@ class Extractor:
                     subject=subj_text,
                     predicate=pred_text,
                     obj=obj_text,
-                    confidence=0.8,  # dep parsing is imperfect, reflect that
+                    confidence=0.8,
                 )
             )
-
-        logger.debug("found %d facts", len(results))
         return results
 
     def _get_span_text(self, token: spacy.tokens.Token) -> str:
