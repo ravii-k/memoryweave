@@ -9,6 +9,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [Unreleased]
+
+### Added
+- `memoryweave/extractor.py` — full spaCy NLP pipeline implementation
+- `EntityResult` and `FactResult` dataclasses
+- `Extractor.extract()` convenience method — single spaCy parse for both pipelines
+- `Extractor._extract_entities_from_doc()` and `_extract_facts_from_doc()` private methods
+- `tests/test_extractor.py` — 25 entity and fact extraction tests
+- `tests/test_extractor_pipeline.py` — 18 pipeline, confidence, and edge case tests
+- `tests/test_extractor_accuracy.py` — 18 accuracy benchmark tests
+- `docs/nlp-pipeline.md` — full Phase 2 documentation
+- spaCy model download step added to CI pipeline
+
+### Changed
+- `pyproject.toml` — added `spacy>=3.7` as runtime dependency
+
 ### Added
 - `memoryweave/logger.py` — logging setup, `get_logger()`, `configure_logging()`
 - `MEMORYWEAVE_LOG_LEVEL` env var support for zero-config logging
