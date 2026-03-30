@@ -39,6 +39,8 @@ jobs:
 
       - name: Download spaCy model
         run: python -m spacy download en_core_web_sm
+      - name: Download sentence-transformers model
+        run: python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
       - name: Run tests with coverage
         run: pytest tests/ -v --cov=memoryweave --cov-report=xml --cov-fail-under=20
