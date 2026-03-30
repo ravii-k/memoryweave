@@ -38,6 +38,7 @@ classifiers = [
 dependencies = [
   "pydantic>=2.0",
   "spacy>=3.7",
+  "sentence-transformers>=2.2",
 ]
 
 # ── Optional / extra dependencies ─────────────────────────────────────────────
