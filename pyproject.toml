@@ -39,6 +39,7 @@ dependencies = [
   "pydantic>=2.0",
   "spacy>=3.7",
   "sentence-transformers>=2.2",
+  "chromadb>=0.4",
 ]
 
 # ── Optional / extra dependencies ─────────────────────────────────────────────
@@ -96,7 +97,10 @@ ignore = [
   "D403",
   "UP037",
   "ANN101",
+  "ANN102",
+  "ANN401",
   "E741",
+
 ]
 
 [tool.ruff.lint.per-file-ignores]
