@@ -239,7 +239,7 @@ class ChromaStore(BaseStore):
             return client
         except ImportError as e:
             raise StoreError(
-                "ChromaDB is not installed. " "Install it with: pip install chromadb"
+                "ChromaDB is not installed. Install it with: pip install chromadb"
             ) from e
         except Exception as e:
             raise StoreError(f"Failed to connect to ChromaDB at {path!r}: {e}") from e
