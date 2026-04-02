@@ -35,7 +35,7 @@ jobs:
             ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" && pip install chromadb
 
       - name: Download spaCy model
         run: python -m spacy download en_core_web_sm
