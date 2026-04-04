@@ -8,6 +8,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ---
 
 ## [Unreleased]
+### Added
+- `memoryweave/client.py` — full `MemoryWeave` client with `add()`, `get()`, `forget()`, `stats()`
+- `memoryweave/ranker.py` — `Ranker` with weighted vector+graph fusion, `MemoryContext` result
+- Lazy-loading of spaCy, sentence-transformers, and store on first use
+- Full public API exposed in `__init__.py` — `MemoryWeave`, `MemoryConfig`, `MemoryContext`, `configure_logging`
+- `examples/basic_usage.py` — demo script showing add/get pipeline
+- `tests/test_client.py` — 21 end-to-end client tests
+- `tests/test_ranker.py` — 13 ranker and MemoryContext tests
+- Version bumped to `0.1.0`
+
+### Changed
+- `memoryweave/__init__.py` — now exports full public API
+- `pyproject.toml` — version bumped to `0.1.0`
 
 ### Added
 - `memoryweave/graph.py` — full KnowledgeGraph implementation using NetworkX

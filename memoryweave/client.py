@@ -1,113 +1,252 @@
-"""Main MemoryWeave client — this is what users actually interact with.
+"""MemoryWeave client — the main public API.
 
-Tried to keep the public API as minimal as possible. Three methods:
-add(), get(), forget(). That's it. Everything else is internal.
+Three lines of code to add persistent memory to any LLM app:
 
-The client itself is just an orchestrator — it doesn't do any heavy
-lifting, it just wires up the pipeline and delegates to the right
-sub-components.
+    memory = MemoryWeave()
+    memory.add("My name is Ravi and I prefer Python.")
+    ctx = memory.get("What language does the user prefer?")
+    # inject ctx.summary into your LLM system prompt
+
+Phase 4, Chapter 4.1 — Ravi Kashyap 2026-04-03
 """
 
 from __future__ import annotations
 
 from memoryweave.config import MemoryConfig
+from memoryweave.embedder import Embedder
+from memoryweave.errors import MemoryWeaveError
+from memoryweave.extractor import Extractor
+from memoryweave.graph import KnowledgeGraph
+from memoryweave.logger import get_logger
+from memoryweave.ranker import MemoryContext, Ranker
+from memoryweave.store import BaseStore, MemoryItem
 
-# these will be uncommented one by one as each phase completes.
-# leaving them here as a reminder of what needs to be wired up
-# from memoryweave.extractor import Extractor   # Phase 2
-# from memoryweave.embedder import Embedder     # Phase 3
-# from memoryweave.store import BaseStore       # Phase 3
-# from memoryweave.graph import KnowledgeGraph  # Phase 3
-# from memoryweave.ranker import Ranker         # Phase 4
+logger = get_logger(__name__)
 
 
 class MemoryWeave:
-    """The main client. Start here.
+    """Universal long-term memory for any LLM application.
 
-    Orchestrates the full memory pipeline:
-    text → NLP extraction → embedding → storage → retrieval → context.
+    Automatically extracts entities and facts from text, stores
+    embeddings for semantic search, and builds a knowledge graph
+    for structured queries. Returns fused context ready to inject
+    into any LLM prompt.
 
     Args:
-        config: Optional MemoryConfig. Defaults work fine for most cases —
-            in-memory store, no API key, no external services needed.
+        config: Optional MemoryConfig. Defaults to in-memory store
+            with all-MiniLM-L6-v2 embeddings and spaCy NLP.
 
     Example:
         >>> memory = MemoryWeave()
-        >>> memory.add("I work as a Python developer in Bangalore.")
-        >>> ctx = memory.get("Where does the user work?")
+        >>> memory.add("My name is Ravi and I prefer Python.")
+        >>> ctx = memory.get("What language does the user prefer?")
         >>> print(ctx.summary)
     """
 
     def __init__(self, config: MemoryConfig | None = None) -> None:
-        """Set up the client with the given config or sensible defaults."""
-        # if no config is passed just use defaults — zero friction for new users
         self.config = config or MemoryConfig()
 
-        # sub-components get initialised here once each phase is done.
-        # keeping these as comments so the structure is obvious when
-        # we come back to wire things up
-        # self._extractor = Extractor(self.config)    # Phase 2
-        # self._embedder  = Embedder(self.config)     # Phase 3
-        # self._store     = BaseStore.create(config)  # Phase 3
-        # self._graph     = KnowledgeGraph(config)    # Phase 3
-        # self._ranker    = Ranker(config)            # Phase 4
+        # lazy-init the heavy components — spaCy and sentence-transformers
+        # both take ~1s to load, so we defer until first use
+        self._extractor: Extractor | None = None
+        self._embedder: Embedder | None = None
+        self._store: BaseStore | None = None
+        self._graph: KnowledgeGraph | None = None
+        self._ranker: Ranker = Ranker(self.config)
 
-    def add(self, text: str, session_id: str | None = None) -> None:
-        """Add a memory from raw text.
-
-        Runs the full pipeline: NLP extraction → embedding
-        → vector store → knowledge graph update.
-
-        Args:
-            text: Raw text to extract memory from. Can be a chat message,
-                a document, or any natural language input.
-            session_id: Optional namespace for isolating memories per user.
-                Leave empty for single-user apps.
-
-        Raises:
-            ExtractionError: If NLP processing fails.
-            StoreError: If writing to the vector store fails.
-            GraphError: If the knowledge graph update fails.
-        """
-        # full pipeline gets wired in Phase 4, Chapter 4.1
-        _session = session_id or self.config.default_session_id
-        raise NotImplementedError(
-            f"coming in Phase 4 — session={_session!r}, text_length={len(text)}"
+        logger.debug(
+            "MemoryWeave initialised (store=%r, model=%r)",
+            self.config.store_type,
+            self.config.embedding_model,
         )
 
-    def get(self, query: str, session_id: str | None = None) -> object:
-        """Retrieve relevant memories for a query.
+    @property
+    def extractor(self) -> Extractor:
+        """Lazy-load the spaCy extractor on first use."""
+        if self._extractor is None:
+            logger.debug("loading extractor...")
+            self._extractor = Extractor(self.config)
+        return self._extractor
 
-        Searches vector store + knowledge graph, fuses the scores,
-        and returns the top results as a clean MemoryContext object.
+    @property
+    def embedder(self) -> Embedder:
+        """Lazy-load the sentence-transformers embedder on first use."""
+        if self._embedder is None:
+            logger.debug("loading embedder...")
+            self._embedder = Embedder(self.config)
+        return self._embedder
+
+    @property
+    def store(self) -> BaseStore:
+        """Lazy-load the vector store on first use."""
+        if self._store is None:
+            logger.debug("initialising store (type=%r)...", self.config.store_type)
+            self._store = BaseStore.create(self.config)
+        return self._store
+
+    @property
+    def graph(self) -> KnowledgeGraph:
+        """Lazy-load the knowledge graph on first use."""
+        if self._graph is None:
+            logger.debug("initialising knowledge graph...")
+            self._graph = KnowledgeGraph(self.config)
+        return self._graph
+
+    def add(self, text: str, metadata: dict | None = None) -> MemoryItem:
+        """Extract, embed, and store a memory from raw text.
+
+        Runs the full pipeline:
+        1. Extract entities and facts (spaCy)
+        2. Embed the raw text (sentence-transformers)
+        3. Store embedding in vector store
+        4. Add entities and facts to knowledge graph
 
         Args:
-            query: Natural language question or prompt fragment.
-            session_id: Optional namespace. Matches what was used in add().
+            text: Raw text to remember. Can be a sentence, paragraph,
+                or full conversation turn.
+            metadata: Optional key-value metadata to attach to the memory.
 
         Returns:
-            MemoryContext with summary, facts, entities, and raw items.
+            The MemoryItem that was stored.
 
         Raises:
-            StoreError: If the vector search fails.
-            GraphError: If the graph query fails.
+            MemoryWeaveError: If extraction or embedding fails.
         """
-        # full implementation in Phase 4, Chapter 4.2
-        _session = session_id or self.config.default_session_id
-        raise NotImplementedError(
-            f"coming in Phase 4 — session={_session!r}, query={query!r}"
-        )
+        if not text or not text.strip():
+            raise MemoryWeaveError("cannot add empty text to memory")
+
+        session_id = self.config.default_session_id
+        logger.debug("add() called for session %r, %d chars", session_id, len(text))
+
+        try:
+            # Step 1 — extract entities and facts
+            entities, facts = self.extractor.extract(text)
+            logger.debug("extracted %d entities, %d facts", len(entities), len(facts))
+
+            # Step 2 — embed the raw text
+            embedding = self.embedder.embed(text)
+
+            # Step 3 — store in vector store
+            item = MemoryItem(
+                text=text,
+                embedding=embedding,
+                session_id=session_id,
+                metadata=metadata or {},
+            )
+            self.store.add(item)
+
+            # Step 4 — update knowledge graph
+            if entities:
+                self.graph.add_entities(entities, session_id)
+            if facts:
+                self.graph.add_facts(facts, session_id)
+
+            logger.debug("add() complete — item %r stored", item.id)
+            return item
+
+        except MemoryWeaveError:
+            raise
+        except Exception as e:
+            raise MemoryWeaveError(f"add() failed: {e}") from e
+
+    def get(self, query: str, top_k: int | None = None) -> MemoryContext:
+        """Retrieve the most relevant memories for a query.
+
+        Runs the full retrieval pipeline:
+        1. Embed the query (sentence-transformers)
+        2. Search vector store for similar memories
+        3. Query knowledge graph for related facts
+        4. Fuse and rank results
+
+        Args:
+            query: Natural language query. Usually the user's latest message.
+            top_k: Max memories to retrieve. Defaults to config.top_k.
+
+        Returns:
+            MemoryContext with summary, entries, facts, and scores.
+            Inject ctx.summary into your LLM system prompt.
+
+        Raises:
+            MemoryWeaveError: If retrieval fails.
+        """
+        if not query or not query.strip():
+            raise MemoryWeaveError("cannot search with empty query")
+
+        k = top_k if top_k is not None else self.config.top_k
+        session_id = self.config.default_session_id
+
+        logger.debug("get() called for session %r, query=%r", session_id, query[:50])
+
+        try:
+            # Step 1 — embed the query
+            query_embedding = self.embedder.embed(query)
+
+            # Step 2 — vector store search
+            vector_results = self.store.search(
+                query_embedding=query_embedding,
+                session_id=session_id,
+                top_k=k,
+            )
+
+            # Step 3 — graph query
+            graph_results = self.graph.query(
+                query=query,
+                session_id=session_id,
+                top_k=k,
+            )
+
+            # Step 4 — fuse and rank
+            context = self._ranker.fuse(
+                vector_results=vector_results,
+                graph_results=graph_results,
+                top_k=k,
+            )
+
+            logger.debug(
+                "get() complete — %d entries, %d facts retrieved",
+                len(context.entries),
+                len(context.facts),
+            )
+            return context
+
+        except MemoryWeaveError:
+            raise
+        except Exception as e:
+            raise MemoryWeaveError(f"get() failed: {e}") from e
 
     def forget(self, session_id: str | None = None) -> None:
         """Wipe all memories for a session.
 
         Args:
-            session_id: Session to clear. Defaults to default_session_id.
+            session_id: Session to clear. Defaults to config.session_id.
         """
-        # multi-user session management comes in Phase 6, Chapter 6.2
-        raise NotImplementedError("coming in Phase 6")
+        sid = session_id or self.config.default_session_id
+        logger.debug("forget() called for session %r", sid)
+
+        try:
+            self.store.delete_session(sid)
+            self.graph.delete_session(sid)
+            logger.debug("forget() complete for session %r", sid)
+        except Exception as e:
+            raise MemoryWeaveError(f"forget() failed: {e}") from e
+
+    def stats(self, session_id: str | None = None) -> dict:
+        """Return memory stats for a session.
+
+        Returns:
+            Dict with vector_count, node_count, edge_count, session_id.
+        """
+        sid = session_id or self.config.default_session_id
+        return {
+            "session_id": sid,
+            "vector_count": self.store.count(sid),
+            "node_count": self.graph.node_count(sid),
+            "edge_count": self.graph.edge_count(sid),
+        }
 
     def __repr__(self) -> str:
         return (
-            f"MemoryWeave(store={self.config.store_type!r}, top_k={self.config.top_k})"
+            f"MemoryWeave(store={self.config.store_type!r}, "
+            f"top_k={self.config.top_k}, "
+            f"session={self.config.default_session_id!r})"
         )
