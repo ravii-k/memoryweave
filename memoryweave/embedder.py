@@ -29,13 +29,16 @@ class Embedder:
     The model is loaded once on init so repeated embed() calls are fast.
 
     Args:
+    ----
         config: Controls which sentence-transformers model to use.
 
     Example:
+    -------
         >>> embedder = Embedder(MemoryConfig())
         >>> vec = embedder.embed("Ravi prefers Python.")
         >>> len(vec)
         384
+
     """
 
     def __init__(self, config: MemoryConfig) -> None:
@@ -76,15 +79,19 @@ class Embedder:
         """Embed a single text string into a dense vector.
 
         Args:
+        ----
             text: Text to embed. Should be meaningful natural language —
                 very short or empty strings produce noisy embeddings.
 
         Returns:
+        -------
             Dense float vector. Length matches self.dimension (384 for
             the default all-MiniLM-L6-v2 model).
 
         Raises:
+        ------
             StoreError: If embedding fails for any reason.
+
         """
         if not text or not text.strip():
             raise StoreError("cannot embed empty text")
@@ -103,13 +110,17 @@ class Embedder:
         handles batching internally and parallelises across CPU cores.
 
         Args:
+        ----
             texts: List of strings to embed. Empty list returns [].
 
         Returns:
+        -------
             List of dense float vectors, one per input text, same order.
 
         Raises:
+        ------
             StoreError: If any text is empty or embedding fails.
+
         """
         if not texts:
             return []
@@ -133,11 +144,14 @@ class Embedder:
         will give a value close to 0.0 or slightly negative.
 
         Args:
+        ----
             vec_a: First embedding vector.
             vec_b: Second embedding vector.
 
         Returns:
+        -------
             Cosine similarity score between -1.0 and 1.0.
+
         """
         if len(vec_a) != len(vec_b):
             raise StoreError(f"vector dimension mismatch: {len(vec_a)} vs {len(vec_b)}")

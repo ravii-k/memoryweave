@@ -19,8 +19,10 @@ class MemoryConfig(BaseModel):
     in-memory store, no API key, no external services needed.
 
     Example:
+    -------
         >>> config = MemoryConfig(store_type="chroma", top_k=5)
         >>> memory = MemoryWeave(config=config)
+
     """
 
     # ── Storage ───────────────────────────────────────────────────────────────
@@ -116,9 +118,7 @@ class MemoryConfig(BaseModel):
         """Ensure vector_weight and graph_weight always sum to 1.0."""
         total = self.vector_weight + self.graph_weight
         if round(total, 10) != 1.0:
-            raise ValueError(
-                f"vector_weight + graph_weight must equal 1.0, got {total}"
-            )
+            raise ValueError(f"vector_weight + graph_weight must equal 1.0, got {total}")
         return self
 
     model_config = {"frozen": False}

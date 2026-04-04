@@ -33,13 +33,16 @@ class KnowledgeGraph:
     extracted as FactResult triples.
 
     Args:
+    ----
         config: MemoryConfig instance.
 
     Example:
+    -------
         >>> kg = KnowledgeGraph(MemoryConfig())
         >>> entities = [EntityResult("Ravi", "PERSON")]
         >>> kg.add_entities(entities, session_id="default")
         >>> results = kg.query("Ravi", session_id="default")
+
     """
 
     def __init__(self, config: MemoryConfig) -> None:
@@ -61,11 +64,14 @@ class KnowledgeGraph:
         rather than creating a duplicate — dedup by (text, label).
 
         Args:
+        ----
             entities: EntityResult list straight from the Extractor.
             session_id: Which session's graph to update.
 
         Raises:
+        ------
             GraphError: If the graph operation fails.
+
         """
         try:
             graph = self._get_graph(session_id)
@@ -89,11 +95,14 @@ class KnowledgeGraph:
         The predicate becomes the edge label.
 
         Args:
+        ----
             facts: FactResult triples from the Extractor.
             session_id: Which session's graph to update.
 
         Raises:
+        ------
             GraphError: If the graph operation fails.
+
         """
         try:
             graph = self._get_graph(session_id)
@@ -125,9 +134,7 @@ class KnowledgeGraph:
         except Exception as e:
             raise GraphError(f"add_facts failed: {e}") from e
 
-    def query(
-        self, query: str, session_id: str, top_k: int = 5
-    ) -> list[tuple[str, float]]:
+    def query(self, query: str, session_id: str, top_k: int = 5) -> list[tuple[str, float]]:
         """Find relevant facts in the graph for a given query string.
 
         Does a simple string-match search over node text and edge
@@ -138,15 +145,19 @@ class KnowledgeGraph:
         finds edges where Ravi is the subject.
 
         Args:
+        ----
             query: Natural language query string.
             session_id: Which session's graph to search.
             top_k: Maximum number of results to return.
 
         Returns:
+        -------
             List of (fact_text, relevance_score) tuples, best first.
 
         Raises:
+        ------
             GraphError: If the query fails.
+
         """
         try:
             graph = self._get_graph(session_id)
@@ -169,9 +180,7 @@ class KnowledgeGraph:
                 if query_lower in fact_text.lower():
                     score = confidence
                 elif any(
-                    word in fact_text.lower()
-                    for word in query_lower.split()
-                    if len(word) > 2
+                    word in fact_text.lower() for word in query_lower.split() if len(word) > 2
                 ):
                     score = confidence * 0.5
 
@@ -192,19 +201,20 @@ class KnowledgeGraph:
         except Exception as e:
             raise GraphError(f"query failed: {e}") from e
 
-    def get_entity_facts(
-        self, entity_text: str, session_id: str
-    ) -> list[tuple[str, float]]:
+    def get_entity_facts(self, entity_text: str, session_id: str) -> list[tuple[str, float]]:
         """Get all facts about a specific entity.
 
         Finds all edges where this entity is the subject or object.
 
         Args:
+        ----
             entity_text: The entity name to look up.
             session_id: Which session to search.
 
         Returns:
+        -------
             List of (fact_text, score) tuples.
+
         """
         try:
             graph = self._get_graph(session_id)
@@ -245,8 +255,10 @@ class KnowledgeGraph:
         """Persist the session graph to a JSON file.
 
         Args:
+        ----
             session_id: Session to save.
             path: File path to write to.
+
         """
         try:
             graph = self._get_graph(session_id)
@@ -262,8 +274,10 @@ class KnowledgeGraph:
         """Load a session graph from a JSON file.
 
         Args:
+        ----
             session_id: Session ID to assign to the loaded graph.
             path: File path to read from.
+
         """
         try:
             with open(path) as f:

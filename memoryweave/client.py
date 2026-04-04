@@ -33,14 +33,17 @@ class MemoryWeave:
     into any LLM prompt.
 
     Args:
+    ----
         config: Optional MemoryConfig. Defaults to in-memory store
             with all-MiniLM-L6-v2 embeddings and spaCy NLP.
 
     Example:
+    -------
         >>> memory = MemoryWeave()
         >>> memory.add("My name is Ravi and I prefer Python.")
         >>> ctx = memory.get("What language does the user prefer?")
         >>> print(ctx.summary)
+
     """
 
     def __init__(self, config: MemoryConfig | None = None) -> None:
@@ -102,15 +105,19 @@ class MemoryWeave:
         4. Add entities and facts to knowledge graph
 
         Args:
+        ----
             text: Raw text to remember. Can be a sentence, paragraph,
                 or full conversation turn.
             metadata: Optional key-value metadata to attach to the memory.
 
         Returns:
+        -------
             The MemoryItem that was stored.
 
         Raises:
+        ------
             MemoryWeaveError: If extraction or embedding fails.
+
         """
         if not text or not text.strip():
             raise MemoryWeaveError("cannot add empty text to memory")
@@ -159,15 +166,19 @@ class MemoryWeave:
         4. Fuse and rank results
 
         Args:
+        ----
             query: Natural language query. Usually the user's latest message.
             top_k: Max memories to retrieve. Defaults to config.top_k.
 
         Returns:
+        -------
             MemoryContext with summary, entries, facts, and scores.
             Inject ctx.summary into your LLM system prompt.
 
         Raises:
+        ------
             MemoryWeaveError: If retrieval fails.
+
         """
         if not query or not query.strip():
             raise MemoryWeaveError("cannot search with empty query")
@@ -218,7 +229,9 @@ class MemoryWeave:
         """Wipe all memories for a session.
 
         Args:
+        ----
             session_id: Session to clear. Defaults to config.session_id.
+
         """
         sid = session_id or self.config.default_session_id
         logger.debug("forget() called for session %r", sid)
@@ -233,8 +246,10 @@ class MemoryWeave:
     def stats(self, session_id: str | None = None) -> dict:
         """Return memory stats for a session.
 
-        Returns:
+        Returns
+        -------
             Dict with vector_count, node_count, edge_count, session_id.
+
         """
         sid = session_id or self.config.default_session_id
         return {

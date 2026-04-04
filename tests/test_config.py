@@ -37,9 +37,7 @@ class TestMemoryConfigCustomValues:
         assert MemoryConfig(top_k=10).top_k == 10
 
     def test_custom_session_id(self):
-        assert (
-            MemoryConfig(default_session_id="user-123").default_session_id == "user-123"
-        )
+        assert MemoryConfig(default_session_id="user-123").default_session_id == "user-123"
 
     def test_custom_weights(self):
         c = MemoryConfig(vector_weight=0.7, graph_weight=0.3)

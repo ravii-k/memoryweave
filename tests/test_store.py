@@ -18,7 +18,7 @@ def make_item(
     session_id: str = "default",
     dim: int = 4,
 ) -> MemoryItem:
-    """Helper — create a MemoryItem with a simple fake embedding."""
+    """Create a MemoryItem with a simple fake embedding for testing."""
     embedding = [0.1 * i for i in range(dim)]
     return MemoryItem(text=text, embedding=embedding, session_id=session_id)
 

@@ -167,13 +167,9 @@ class TestStats:
         assert "edge_count" in data
 
     def test_stats_increments_after_add(self) -> None:
-        assert (
-            client.get("/memory/stats?session_id=inc-test").json()["vector_count"] == 0
-        )
+        assert client.get("/memory/stats?session_id=inc-test").json()["vector_count"] == 0
         client.post(
             "/memory/add",
             json={"text": "Ravi likes Python.", "session_id": "inc-test"},
         )
-        assert (
-            client.get("/memory/stats?session_id=inc-test").json()["vector_count"] == 1
-        )
+        assert client.get("/memory/stats?session_id=inc-test").json()["vector_count"] == 1
