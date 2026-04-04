@@ -38,6 +38,9 @@ classifiers = [
 dependencies = [
   "pydantic>=2.0",
   "spacy>=3.7",
+  "sentence-transformers>=2.2",
+  "chromadb>=0.4",
+  "networkx>=3.0",
 ]
 
 # ── Optional / extra dependencies ─────────────────────────────────────────────
@@ -95,6 +98,7 @@ ignore = [
   "D403",
   "UP037",
   "ANN101",
+  "ANN401",
   "E741",
 ]
 
