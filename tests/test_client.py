@@ -1,64 +1,167 @@
-"""Tests for the MemoryWeave client.
+"""Tests for the MemoryWeave client — end-to-end pipeline tests.
 
-Phase 1 tests are limited to init behaviour and checking that the stub
-methods raise NotImplementedError correctly. Not much to test yet since
-nothing is implemented — the real behaviour tests come in Phase 4.
-
-Keeping these here so the test structure is in place and ready to expand.
+These tests load spaCy and sentence-transformers so they're slower.
+Using module-scoped fixtures to keep total time reasonable.
 """
+
+from __future__ import annotations
 
 import pytest
 
 from memoryweave.client import MemoryWeave
 from memoryweave.config import MemoryConfig
+from memoryweave.errors import MemoryWeaveError
+from memoryweave.ranker import MemoryContext
+from memoryweave.store import MemoryItem
+
+
+@pytest.fixture(scope="module")
+def memory() -> MemoryWeave:
+    """Shared MemoryWeave instance — loads models once per module."""
+    return MemoryWeave(MemoryConfig())
 
 
 class TestMemoryWeaveInit:
-    """Basic init tests — make sure the client sets itself up correctly."""
-
     def test_default_init(self) -> None:
-        """No config passed — should fall back to MemoryConfig defaults."""
-        memory = MemoryWeave()
-        assert memory.config is not None
-        assert memory.config.store_type == "memory"
+        m = MemoryWeave()
+        assert m.config is not None
 
     def test_custom_config(self) -> None:
-        """Config passed in — should use it, not the defaults."""
-        config = MemoryConfig(top_k=10, store_type="chroma")
-        memory = MemoryWeave(config=config)
-        assert memory.config.top_k == 10
-        assert memory.config.store_type == "chroma"
+        config = MemoryConfig(top_k=3)
+        m = MemoryWeave(config)
+        assert m.config.top_k == 3
 
     def test_repr(self) -> None:
-        """repr should be useful for debugging — show store type and top_k."""
-        memory = MemoryWeave()
-        result = repr(memory)
-        assert "MemoryWeave" in result
-        assert "memory" in result
+        m = MemoryWeave()
+        assert "MemoryWeave" in repr(m)
+        assert "store=" in repr(m)
+
+    def test_lazy_init_extractor(self) -> None:
+        m = MemoryWeave()
+        assert m._extractor is None
+        # access triggers load
+        _ = m.extractor
+        assert m._extractor is not None
+
+    def test_lazy_init_embedder(self) -> None:
+        m = MemoryWeave()
+        assert m._embedder is None
+        _ = m.embedder
+        assert m._embedder is not None
 
 
-class TestMemoryWeaveStubs:
-    """Stub methods should raise NotImplementedError until they're built.
+class TestAdd:
+    def test_returns_memory_item(self, memory: MemoryWeave) -> None:
+        item = memory.add("Ravi works at Anthropic.")
+        assert isinstance(item, MemoryItem)
 
-    These tests will be replaced with real behaviour tests in Phase 4.
-    For now they just confirm the stubs are wired up and not silently
-    returning None or doing something unexpected.
-    """
+    def test_item_has_text(self, memory: MemoryWeave) -> None:
+        item = memory.add("Ravi likes Python.")
+        assert item.text == "Ravi likes Python."
 
-    def test_add_raises_not_implemented(self) -> None:
-        """add() is a Phase 4 thing — should be loud about it."""
-        memory = MemoryWeave()
-        with pytest.raises(NotImplementedError):
-            memory.add("Some text")
+    def test_item_has_id(self, memory: MemoryWeave) -> None:
+        item = memory.add("Ravi lives in India.")
+        assert item.id is not None
 
-    def test_get_raises_not_implemented(self) -> None:
-        """get() is a Phase 4 thing — should be loud about it."""
-        memory = MemoryWeave()
-        with pytest.raises(NotImplementedError):
-            memory.get("Some query")
+    def test_item_has_embedding(self, memory: MemoryWeave) -> None:
+        item = memory.add("Ravi prefers dark mode.")
+        assert len(item.embedding) == 384
 
-    def test_forget_raises_not_implemented(self) -> None:
-        """forget() is a Phase 6 thing — should be loud about it."""
-        memory = MemoryWeave()
-        with pytest.raises(NotImplementedError):
-            memory.forget()
+    def test_empty_text_raises(self, memory: MemoryWeave) -> None:
+        with pytest.raises(MemoryWeaveError):
+            memory.add("")
+
+    def test_whitespace_raises(self, memory: MemoryWeave) -> None:
+        with pytest.raises(MemoryWeaveError):
+            memory.add("   ")
+
+    def test_increments_store_count(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_session_id="count-test"))
+        before = m.store.count("count-test")
+        m.add("Test memory.")
+        after = m.store.count("count-test")
+        assert after == before + 1
+
+    def test_custom_metadata(self, memory: MemoryWeave) -> None:
+        item = memory.add("Test with metadata.", metadata={"source": "test"})
+        assert item.metadata["source"] == "test"
+
+
+class TestGet:
+    def test_returns_memory_context(self, memory: MemoryWeave) -> None:
+        memory.add("Ravi prefers Python over JavaScript.")
+        ctx = memory.get("What language does Ravi prefer?")
+        assert isinstance(ctx, MemoryContext)
+
+    def test_has_results_after_add(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_session_id="get-test"))
+        m.add("Ravi likes Python.")
+        ctx = m.get("Python")
+        assert ctx.has_results
+
+    def test_summary_is_string(self, memory: MemoryWeave) -> None:
+        ctx = memory.get("What does Ravi like?")
+        assert isinstance(ctx.summary, str)
+
+    def test_empty_query_raises(self, memory: MemoryWeave) -> None:
+        with pytest.raises(MemoryWeaveError):
+            memory.get("")
+
+    def test_whitespace_query_raises(self, memory: MemoryWeave) -> None:
+        with pytest.raises(MemoryWeaveError):
+            memory.get("   ")
+
+    def test_empty_store_returns_empty_context(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_session_id="empty-session-xyz"))
+        ctx = m.get("anything")
+        assert isinstance(ctx, MemoryContext)
+
+    def test_top_k_respected(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_default_session_id="topk-test", top_k=2))
+        for i in range(5):
+            m.add(f"Memory number {i} about Python and coding.")
+        ctx = m.get("Python", top_k=2)
+        assert len(ctx.entries) <= 2
+
+
+class TestForget:
+    def test_forget_clears_store(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_session_id="forget-test"))
+        m.add("Remember this.")
+        assert m.store.count("forget-test") == 1
+        m.forget()
+        assert m.store.count("forget-test") == 0
+
+    def test_forget_clears_graph(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_session_id="forget-graph-test"))
+        m.add("Ravi likes Python.")
+        m.forget()
+        assert m.graph.node_count("forget-graph-test") == 0
+
+    def test_forget_custom_session(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_session_id="main-session"))
+        m.add("Keep this.")
+        m.forget(session_id="other-session")
+        # main session should be untouched
+        assert m.store.count("main-session") == 1
+
+
+class TestStats:
+    def test_returns_dict(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_session_id="stats-test"))
+        stats = m.stats()
+        assert isinstance(stats, dict)
+
+    def test_stats_has_required_keys(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_session_id="stats-keys-test"))
+        stats = m.stats()
+        assert "session_id" in stats
+        assert "vector_count" in stats
+        assert "node_count" in stats
+        assert "edge_count" in stats
+
+    def test_stats_increments_after_add(self) -> None:
+        m = MemoryWeave(MemoryConfig(default_session_id="stats-count-test"))
+        assert m.stats()["vector_count"] == 0
+        m.add("Ravi likes Python.")
+        assert m.stats()["vector_count"] == 1

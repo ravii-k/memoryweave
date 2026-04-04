@@ -1,92 +1,70 @@
-"""Context ranker — fuses vector and graph results into a clean MemoryContext.
+"""Ranker — fuses vector search results with graph query results.
 
-This is the last stage before results go back to the user. Takes raw
-results from both the vector store and knowledge graph, applies score
-fusion, and packages everything into a MemoryContext that's ready to
-inject into an LLM prompt.
+Takes raw results from the vector store and the knowledge graph,
+scores them using a weighted fusion formula, and returns a
+MemoryContext ready to inject into an LLM prompt.
 
-Score fusion is simple for now: weighted sum of vector score and graph
-score. Started with equal weights but vector search was outperforming
-graph on most queries so bumped it to 60/40. Will benchmark properly
-in Phase 4 and adjust if needed.
+Fusion formula:
+    final_score = (vector_weight * vector_score) + (graph_weight * graph_score)
+
+Default weights: 0.6 vector / 0.4 graph (set in MemoryConfig).
+
+Phase 4, Chapter 4.1 — Ravi Kashyap 2026-04-03
 """
 
 from __future__ import annotations
 
 from memoryweave.config import MemoryConfig
+from memoryweave.logger import get_logger
 from memoryweave.store import MemoryItem
+
+logger = get_logger(__name__)
 
 
 class MemoryContext:
-    """What memory.get() returns — structured and ready for prompt injection.
-
-    This is the object users interact with after calling get(). Designed
-    to be easy to use — most users just want ctx.summary and that's it.
-    The raw items and scores are there for power users who need more control.
+    """The result of a memory.get() call — ready to inject into a prompt.
 
     Attributes:
-        summary: 2-3 sentence natural language summary of the most relevant
-            memories. This is what you inject into your system prompt.
-        facts: Individual atomic facts pulled from memories. More granular
-            than the summary — useful for debugging what was retrieved.
-        entities: Dict grouping entity names by type. e.g.
-            {"PERSON": ["Ravi"], "ORG": ["Anthropic"]}
-        items: The raw MemoryItem objects for anyone who needs the full data.
-        scores: Relevance score for each item, same order as items.
-            Scores are 0.0–1.0, higher is more relevant.
-
-    Example:
-        >>> ctx = memory.get("What does the user prefer?")
-        >>> print(ctx.summary)
-        "Ravi is a Python developer who prefers dark mode."
-        >>> print(ctx.facts)
-        ["Ravi prefers Python", "Ravi uses dark mode"]
+        summary: Plain-text summary of relevant memories. Inject this
+            directly into the LLM system prompt.
+        facts: List of (fact_text, score) tuples from the knowledge graph.
+        entries: List of (MemoryItem, score) tuples from the vector store.
+        scores: Flat list of final fusion scores for each entry.
     """
 
     def __init__(
         self,
         summary: str = "",
-        facts: list[str] | None = None,
-        entities: dict[str, list[str]] | None = None,
-        items: list[MemoryItem] | None = None,
+        facts: list[tuple[str, float]] | None = None,
+        entries: list[tuple[MemoryItem, float]] | None = None,
         scores: list[float] | None = None,
     ) -> None:
         self.summary = summary
         self.facts = facts or []
-        self.entities = entities or {}
-        self.items = items or []
+        self.entries = entries or []
         self.scores = scores or []
 
     def __repr__(self) -> str:
         return (
             f"MemoryContext(facts={len(self.facts)}, "
-            f"entities={len(self.entities)}, "
-            f"items={len(self.items)})"
+            f"entries={len(self.entries)}, "
+            f"summary_len={len(self.summary)})"
         )
 
-    def to_prompt_string(self) -> str:
-        """Format the context as a string ready to drop into a system prompt.
-
-        Returns:
-            Formatted string combining summary and key facts. Keeps it
-            concise — don't want to eat too many tokens with memory context.
-        """
-        # Phase 4, Chapter 4.2 — will experiment with different formats
-        # to find what actually improves LLM response quality
-        raise NotImplementedError("coming in Phase 4, Chapter 4.2")
+    @property
+    def has_results(self) -> bool:
+        """True if there is any memory context to inject."""
+        return bool(self.entries or self.facts)
 
 
 class Ranker:
-    """Fuses vector and graph scores into a ranked MemoryContext.
+    """Fuses vector store and graph results into a MemoryContext.
 
-    The fusion formula is straightforward:
-        final_score = (vector_score * vector_weight)
-                    + (graph_score  * graph_weight)
-
-    Then we sort by final_score descending and take top_k.
+    Called at the end of every memory.get() to combine both retrieval
+    signals into a single ranked list and build the context summary.
 
     Args:
-        config: Provides vector_weight, graph_weight, and top_k.
+        config: MemoryConfig with vector_weight and graph_weight set.
     """
 
     def __init__(self, config: MemoryConfig) -> None:
@@ -96,18 +74,105 @@ class Ranker:
         self,
         vector_results: list[tuple[MemoryItem, float]],
         graph_results: list[tuple[str, float]],
+        top_k: int | None = None,
     ) -> MemoryContext:
-        """Fuse vector and graph results into a ranked MemoryContext.
+        """Fuse vector and graph results into a MemoryContext.
 
         Args:
-            vector_results: (MemoryItem, score) pairs from the vector store.
-            graph_results: (fact_text, score) pairs from the knowledge graph.
+            vector_results: List of (MemoryItem, score) from BaseStore.search().
+            graph_results: List of (fact_text, score) from KnowledgeGraph.query().
+            top_k: Max entries to include. Defaults to config.top_k.
 
         Returns:
-            MemoryContext with the best fused results, ready for injection.
+            A MemoryContext with summary, facts, entries, and scores.
         """
-        # Phase 4, Chapter 4.2.
-        # the tricky part here will be aligning vector and graph results
-        # since they come in different formats — need to normalise scores
-        # to the same scale before fusing
-        raise NotImplementedError("coming in Phase 4, Chapter 4.2")
+        k = top_k if top_k is not None else self.config.top_k
+        vw = self.config.vector_weight
+        gw = self.config.graph_weight
+
+        logger.debug(
+            "fusing %d vector + %d graph results (vw=%.1f, gw=%.1f)",
+            len(vector_results),
+            len(graph_results),
+            vw,
+            gw,
+        )
+
+        # normalise graph scores to 0-1 range if needed
+        graph_max = max((s for _, s in graph_results), default=1.0)
+        if graph_max == 0.0:
+            graph_max = 1.0
+
+        # build a text → graph_score lookup for fusion
+        graph_lookup: dict[str, float] = {
+            text: score / graph_max for text, score in graph_results
+        }
+
+        # score each vector result with fusion
+        fused: list[tuple[MemoryItem, float]] = []
+        for item, vscore in vector_results:
+            # check if any graph fact mentions text from this memory
+            gscore = max(
+                (
+                    graph_lookup[gtext]
+                    for gtext in graph_lookup
+                    if any(
+                        word in item.text.lower()
+                        for word in gtext.lower().split()
+                        if len(word) > 3
+                    )
+                ),
+                default=0.0,
+            )
+            final = (vw * vscore) + (gw * gscore)
+            fused.append((item, final))
+
+        # sort by final score, take top_k
+        fused.sort(key=lambda x: x[1], reverse=True)
+        top_entries = fused[:k]
+        top_scores = [score for _, score in top_entries]
+
+        # also include graph-only facts that aren't in vector results
+        top_facts = graph_results[:k]
+
+        summary = self._build_summary(top_entries, top_facts)
+
+        logger.debug(
+            "fuse complete — %d entries, %d facts in context",
+            len(top_entries),
+            len(top_facts),
+        )
+
+        return MemoryContext(
+            summary=summary,
+            facts=top_facts,
+            entries=top_entries,
+            scores=top_scores,
+        )
+
+    def _build_summary(
+        self,
+        entries: list[tuple[MemoryItem, float]],
+        facts: list[tuple[str, float]],
+    ) -> str:
+        """Build the plain-text summary to inject into the LLM prompt.
+
+        Keeps it concise — one sentence per memory, facts listed cleanly.
+        The LLM will do the synthesis; we just provide the raw context.
+        """
+        if not entries and not facts:
+            return ""
+
+        lines: list[str] = []
+
+        if entries:
+            lines.append("Relevant memories:")
+            for item, score in entries:
+                lines.append(f"- {item.text} (relevance: {score:.2f})")
+
+        if facts:
+            lines.append("Known facts:")
+            for fact_text, score in facts:
+                lines.append(f"- {fact_text} (confidence: {score:.2f})")
+
+        return "\n".join(lines)
