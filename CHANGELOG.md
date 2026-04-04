@@ -1,3 +1,23 @@
+## [0.1.0] — 2026-04-04
+
+### Added — Phase 6 (FastAPI REST server)
+- `memoryweave/server.py` — FastAPI REST API with `/memory/add`, `/memory/get`, `/memory/forget`, `/memory/stats`, `/health`
+- CORS middleware enabled for all origins (tighten in production)
+- Per-session MemoryWeave client management
+- `tests/test_server.py` — 16 server endpoint tests
+- FastAPI interactive docs at `/docs` and `/redoc`
+
+### Added — Phase 5 (TypeScript SDK)
+- `sdk/typescript/src/client.ts` — full TypeScript client wrapping the REST API
+- `sdk/typescript/src/types.ts` — TypeScript types matching Python API
+- `sdk/typescript/src/index.ts` — public exports
+- `sdk/typescript/tests/client.test.ts` — 20 Jest tests with mocked fetch
+- `sdk/typescript/package.json`, `tsconfig.json`, `README.md`
+
+### Added — Phase 7 (Documentation)
+- `README.md` — comprehensive project README with quickstart, API docs, architecture diagram
+- `docs/quickstart.md` — step-by-step guide including OpenAI integration example
+
 # Changelog
 
 All notable changes to MemoryWeave are documented here.
