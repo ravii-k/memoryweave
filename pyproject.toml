@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # [Ravi Kashyap] 2026-03-23 - Core package metadata (Phase 1, Chapter 1.2)
 [project]
 name = "memoryweave"
-version = "0.0.1"
+version = "0.1.0"
 description = "Universal long-term memory for any LLM application."
 readme = "README.md"
 license = { file = "LICENSE" }
