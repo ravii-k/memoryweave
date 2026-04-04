@@ -2,40 +2,40 @@
 
 > Universal long-term memory for any LLM application.
 
-[![PyPI version](https://img.shields.io/pypi/v/memoryweave?style=flat-square)](https://pypi.org/project/memoryweave/)
-[![npm version](https://img.shields.io/npm/v/memoryweave?style=flat-square)](https://npmjs.com/package/memoryweave)
-[![CI](https://img.shields.io/github/actions/workflow/status/ravii-k/memoryweave/ci.yml?style=flat-square)](https://github.com/ravii-k/memoryweave/actions)
-[![Coverage](https://img.shields.io/codecov/c/github/ravii-k/memoryweave?style=flat-square)](https://codecov.io/gh/ravii-k/memoryweave)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue?style=flat-square)](https://python.org)
+[![CI](https://github.com/ravii-k/memoryweave/actions/workflows/ci.yml/badge.svg)](https://github.com/ravii-k/memoryweave/actions)
+[![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12-blue)](https://pypi.org/project/memoryweave/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-orange)](CHANGELOG.md)
 
 ---
 
 LLMs are stateless. Every conversation starts from zero. MemoryWeave fixes that.
 
-Plug it into any LLM app with 3 lines of code. It automatically extracts entities and
-facts from conversations, builds a personal knowledge graph, and surfaces the most
-relevant context on every prompt — across sessions, users, and models.
+Plug into any LLM app with **3 lines of code**. It automatically extracts entities and facts from conversations, builds a personal knowledge graph, and surfaces the most relevant context on every prompt — across sessions, users, and models.
 
 ```python
 import memoryweave
 
 memory = memoryweave.MemoryWeave()
-memory.add("My name is Alex and I prefer Python over JavaScript.")
+memory.add("My name is Ravi and I prefer Python over JavaScript.")
 ctx = memory.get("What language does the user prefer?")
-# → Injects: "User is Alex. Prefers Python." into your next prompt
+# inject ctx.summary into your LLM system prompt
+print(ctx.summary)
+# → Relevant memories:
+# → - My name is Ravi and I prefer Python over JavaScript. (relevance: 0.94)
 ```
 
 ---
 
 ## Features
 
-- **Model-agnostic** — works with OpenAI, Anthropic, Gemini, Mistral, Ollama, and any OpenAI-compatible API
-- **Dual storage** — combines semantic vector search with a structured knowledge graph for higher-quality retrieval
-- **Zero config** — works out of the box with in-memory or ChromaDB storage; swap backends in one line
-- **Multi-user** — session namespacing for isolated per-user memory
-- **Self-hostable** — run entirely locally, no data leaves your machine
-- **Python + TypeScript** — native SDKs for both ecosystems
+- **Model-agnostic** — works with OpenAI, Anthropic, Gemini, Ollama, and any LLM
+- **Dual retrieval** — combines semantic vector search with a structured knowledge graph
+- **Zero config** — works out of the box with in-memory storage; swap to ChromaDB in one line
+- **Multi-session** — isolated per-user memory with `session_id`
+- **REST API** — FastAPI server so any language can use it
+- **TypeScript SDK** — native JS/TS client for the REST API
+- **Fully offline** — no API keys needed; runs on CPU with local models
 
 ---
 
@@ -45,90 +45,173 @@ ctx = memory.get("What language does the user prefer?")
 pip install memoryweave
 ```
 
+**Optional extras:**
 ```bash
-npm install memoryweave
+pip install memoryweave[server]    # FastAPI REST server
+```
+
+**Download the NLP model on first use:**
+```bash
+python -m spacy download en_core_web_sm
 ```
 
 ---
 
-## Quickstart
+## Quick start
 
-> Full guides in [docs/quickstart.md](docs/quickstart.md)
+### Python
 
 ```python
-from memoryweave import MemoryWeave
-from openai import OpenAI
+from memoryweave import MemoryWeave, MemoryConfig
 
-memory = MemoryWeave()           # in-memory store, no config needed
-client = OpenAI()
+# in-memory store (default) — great for development
+memory = MemoryWeave()
 
-def chat(user_message: str) -> str:
-    memory.add(user_message)
-    ctx = memory.get(user_message)
+# add memories
+memory.add("My name is Ravi Kashyap.")
+memory.add("I work at a startup building AI tools in India.")
+memory.add("I prefer Python and FastAPI for backend development.")
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": f"Context:\n{ctx.summary}"},
-            {"role": "user",   "content": user_message},
-        ]
-    )
-    return response.choices[0].message.content
+# retrieve relevant context
+ctx = memory.get("What does this person do for work?")
+print(ctx.summary)
+
+# check stats
+print(memory.stats())
+# → {'session_id': 'default', 'vector_count': 3, 'node_count': 4, 'edge_count': 2}
+```
+
+### With ChromaDB persistence
+
+```python
+from memoryweave import MemoryWeave, MemoryConfig
+
+memory = MemoryWeave(MemoryConfig(
+    store_type="chroma",
+    store_path="./my_memory_db",
+    default_session_id="user-ravi",
+))
+
+memory.add("Ravi prefers dark mode and mechanical keyboards.")
+ctx = memory.get("What are this user's preferences?")
+```
+
+### With the REST API (any language)
+
+Start the server:
+```bash
+uvicorn memoryweave.server:app --reload
+```
+
+Then from TypeScript/JavaScript:
+```typescript
+import { MemoryWeave } from "@memoryweave/sdk";
+
+const memory = new MemoryWeave({ sessionId: "user-123" });
+await memory.add("My name is Ravi and I prefer Python.");
+const ctx = await memory.get("What language does the user prefer?");
+console.log(ctx.summary);
+```
+
+Or with plain `curl`:
+```bash
+curl -X POST http://localhost:8000/memory/add \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Ravi prefers Python.", "session_id": "demo"}'
+
+curl -X POST http://localhost:8000/memory/get \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What language?", "session_id": "demo"}'
 ```
 
 ---
 
-## Documentation
+## How it works
 
-| Doc | Description |
-|-----|-------------|
-| [docs/quickstart.md](docs/quickstart.md) | Get running in 5 minutes |
-| [docs/installation.md](docs/installation.md) | Full install + config options |
-| [docs/api-reference.md](docs/api-reference.md) | All methods and return types |
-| [docs/nlp-pipeline.md](docs/nlp-pipeline.md) | How extraction works |
-| [docs/storage-layer.md](docs/storage-layer.md) | Vector + graph storage |
-| [docs/typescript-sdk.md](docs/typescript-sdk.md) | TypeScript / Next.js guide |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
+```
+memory.add(text)
+  │
+  ├─ Extractor (spaCy)         → entities + facts
+  ├─ Embedder (sentence-transformers) → 384-dim vector
+  ├─ BaseStore (InMemory/Chroma)     → vector storage
+  └─ KnowledgeGraph (NetworkX) → entity + fact graph
 
----
+memory.get(query)
+  │
+  ├─ Embedder → query vector
+  ├─ BaseStore.search() → top-k similar memories
+  ├─ KnowledgeGraph.query() → related facts
+  └─ Ranker.fuse() → weighted blend → MemoryContext
+```
 
-## Supported LLMs & stores
-
-| LLM | Status |
-|-----|--------|
-| OpenAI (GPT-4o, GPT-4) | Planned (Phase 4) |
-| Anthropic (Claude) | Planned (Phase 4) |
-| Ollama (local models) | Planned (Phase 4) |
-| Mistral | Planned (Phase 6) |
-| Gemini | Planned (Phase 5) |
-
-| Vector store | Status |
-|-------------|--------|
-| In-memory (default) | Planned (Phase 3) |
-| ChromaDB | Planned (Phase 3) |
-| Qdrant | Planned (Phase 3) |
-| Pinecone | Roadmap |
+**Fusion formula:** `score = 0.6 × vector_score + 0.4 × graph_score`
 
 ---
 
-## Roadmap
+## Configuration
 
-- [x] Phase 1 — Repo foundation & project setup
-- [ ] Phase 2 — NLP extraction pipeline
-- [ ] Phase 3 — Storage layer (vector + graph)
-- [ ] Phase 4 — Core memory API (`memory.add` / `memory.get`)
-- [ ] Phase 5 — TypeScript SDK
-- [ ] Phase 6 — Advanced features (decay, multi-user, FastAPI server)
-- [ ] Phase 7 — Examples & documentation
-- [ ] Phase 8 — Testing, polish & launch (v1.0.0)
+```python
+from memoryweave import MemoryConfig
+
+config = MemoryConfig(
+    store_type="memory",        # "memory" | "chroma" | "qdrant"
+    store_path="./mw_db",       # path for chroma/qdrant
+    embedding_model="all-MiniLM-L6-v2",  # any sentence-transformers model
+    spacy_model="en_core_web_sm",        # any spaCy model
+    top_k=5,                    # memories to retrieve per get()
+    vector_weight=0.6,          # fusion weight for vector search
+    graph_weight=0.4,           # fusion weight for graph search
+    default_session_id="default",        # session namespace
+)
+```
+
+---
+
+## REST API
+
+Start the server: `uvicorn memoryweave.server:app --reload`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `POST` | `/memory/add` | Add a memory |
+| `POST` | `/memory/get` | Retrieve context |
+| `DELETE` | `/memory/forget` | Wipe a session |
+| `GET` | `/memory/stats` | Session stats |
+
+Full interactive docs at **http://localhost:8000/docs**
+
+---
+
+## Project status
+
+```
+✅ Phase 1 — Foundation
+✅ Phase 2 — NLP extraction pipeline (spaCy)
+✅ Phase 3 — Storage layer (vector store + knowledge graph)
+✅ Phase 4 — Core memory API v0.1.0
+✅ Phase 5 — TypeScript SDK
+✅ Phase 6 — FastAPI REST server
+⬜ Phase 7 — Documentation
+⬜ Phase 8 — Launch v1.0.0 (Product Hunt + Hacker News)
+```
+
+**Test coverage:** 225+ tests · 90%+ coverage · CI green on Python 3.10/3.11/3.12
 
 ---
 
 ## Contributing
 
-We welcome contributions of all kinds. Please read [CONTRIBUTING.md](CONTRIBUTING.md)
-before opening a PR.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+```bash
+git clone https://github.com/ravii-k/memoryweave.git
+cd memoryweave
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+python -m spacy download en_core_web_sm
+pytest tests/ -v
+```
 
 ---
 
@@ -138,5 +221,4 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
-*Project started: Ravi Kashyap 2025-03-22*
-*Phase 1, Chapter 1.1 — Repo & Git setup*
+*Built by [Ravi Kashyap](https://github.com/ravii-k) · Started March 2026*
