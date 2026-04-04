@@ -9,6 +9,25 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `memoryweave/graph.py` — full KnowledgeGraph implementation using NetworkX
+- `KnowledgeGraph.add_entities()` — adds EntityResult nodes to session graph
+- `KnowledgeGraph.add_facts()` — adds FactResult triples as directed edges
+- `KnowledgeGraph.query()` — string-match fact retrieval
+- `KnowledgeGraph.get_entity_facts()` — lookup all facts for a specific entity
+- `KnowledgeGraph.save()` / `.load()` — JSON persistence
+- `memoryweave/store.py` — full InMemoryStore and ChromaStore implementations
+- `memoryweave/embedder.py` — full Embedder with sentence-transformers
+- `tests/test_graph.py` — 28 knowledge graph tests
+- `tests/test_store.py` — 32 vector store tests
+- `tests/test_embedder.py` — 24 embedder tests
+- `docs/storage-layer.md` — full Phase 3 documentation
+- networkx added to runtime dependencies
+
+### Changed
+- `pyproject.toml` — added sentence-transformers, chromadb, networkx deps
+- CI pipeline — downloads spaCy model, sentence-transformers model, chromadb
+
 ## [Unreleased]
 
 ### Added
