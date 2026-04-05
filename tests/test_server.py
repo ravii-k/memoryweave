@@ -173,3 +173,48 @@ class TestStats:
             json={"text": "Ravi likes Python.", "session_id": "inc-test"},
         )
         assert client.get("/memory/stats?session_id=inc-test").json()["vector_count"] == 1
+
+
+class TestAuthentication:
+    def test_health_always_accessible(self) -> None:
+        resp = client.get("/health")
+        assert resp.status_code == 200
+
+    def test_no_key_required_when_env_not_set(self) -> None:
+        resp = client.post(
+            "/memory/add",
+            json={"text": "auth test memory.", "session_id": "auth-test"},
+        )
+        assert resp.status_code == 200
+
+    def test_valid_key_accepted(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import memoryweave.server as srv
+
+        monkeypatch.setattr(srv, "_API_KEY", "secret-key-123")
+        resp = client.post(
+            "/memory/add",
+            json={"text": "secure memory.", "session_id": "auth-test2"},
+            headers={"X-API-Key": "secret-key-123"},
+        )
+        assert resp.status_code == 200
+
+    def test_wrong_key_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import memoryweave.server as srv
+
+        monkeypatch.setattr(srv, "_API_KEY", "secret-key-123")
+        resp = client.post(
+            "/memory/add",
+            json={"text": "blocked memory.", "session_id": "auth-test3"},
+            headers={"X-API-Key": "wrong-key"},
+        )
+        assert resp.status_code == 401
+
+    def test_missing_key_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import memoryweave.server as srv
+
+        monkeypatch.setattr(srv, "_API_KEY", "secret-key-123")
+        resp = client.post(
+            "/memory/get",
+            json={"query": "anything", "session_id": "auth-test4"},
+        )
+        assert resp.status_code == 401

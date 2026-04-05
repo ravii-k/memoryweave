@@ -9,10 +9,12 @@ Phase 6, Chapter 6.1 — Ravi Kashyap 2026-04-04
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
 from memoryweave.client import MemoryWeave
@@ -20,6 +22,19 @@ from memoryweave.config import MemoryConfig
 from memoryweave.logger import get_logger
 
 logger = get_logger(__name__)
+
+_API_KEY = os.environ.get("MEMORYWEAVE_API_KEY", "")
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+async def _verify_key(key: str | None = Security(_api_key_header)) -> None:
+    """Verify API key if MEMORYWEAVE_API_KEY is set in environment.
+
+    If the env var is not set the server runs unauthenticated (dev mode).
+    """
+    if _API_KEY and key != _API_KEY:
+        raise HTTPException(status_code=401, detail="invalid or missing API key")
+
 
 app = FastAPI(
     title="MemoryWeave API",
@@ -128,7 +143,7 @@ async def health() -> dict[str, str]:
 
 
 @app.post("/memory/add", response_model=MemoryItemResponse, tags=["memory"])
-async def add_memory(req: AddRequest) -> MemoryItemResponse:
+async def add_memory(req: AddRequest, _: None = Depends(_verify_key)) -> MemoryItemResponse:
     """Extract, embed, and store a memory from raw text."""
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="text cannot be empty")
@@ -150,7 +165,7 @@ async def add_memory(req: AddRequest) -> MemoryItemResponse:
 
 
 @app.post("/memory/get", response_model=MemoryContextResponse, tags=["memory"])
-async def get_memory(req: GetRequest) -> MemoryContextResponse:
+async def get_memory(req: GetRequest, _: None = Depends(_verify_key)) -> MemoryContextResponse:
     """Retrieve the most relevant memories for a query."""
     if not req.query or not req.query.strip():
         raise HTTPException(status_code=400, detail="query cannot be empty")
@@ -183,7 +198,7 @@ async def get_memory(req: GetRequest) -> MemoryContextResponse:
 
 
 @app.delete("/memory/forget", tags=["memory"])
-async def forget_memory(req: ForgetRequest) -> dict[str, str]:
+async def forget_memory(req: ForgetRequest, _: None = Depends(_verify_key)) -> dict[str, str]:
     """Wipe all memories for a session."""
     try:
         if req.session_id in _sessions:
@@ -196,7 +211,7 @@ async def forget_memory(req: ForgetRequest) -> dict[str, str]:
 
 
 @app.get("/memory/stats", response_model=StatsResponse, tags=["memory"])
-async def get_stats(session_id: str = "default") -> StatsResponse:
+async def get_stats(session_id: str = "default", _: None = Depends(_verify_key)) -> StatsResponse:
     """Get memory stats for a session."""
     try:
         client = _get_client(session_id)
