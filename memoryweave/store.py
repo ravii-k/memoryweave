@@ -29,12 +29,14 @@ class MemoryItem:
     The metadata dict is flexible — callers can store timestamps,
     source info, importance scores, whatever they need.
 
-    Attributes:
+    Attributes
+    ----------
         id: Unique ID for this memory. UUIDs by default.
         text: The original raw text this memory was built from.
         embedding: Dense vector representation of the text.
         session_id: Which user/session this memory belongs to.
         metadata: Freeform key-value store for extra info.
+
     """
 
     def __init__(
@@ -83,13 +85,16 @@ class BaseStore(ABC):
         """Find the most similar memories by cosine similarity.
 
         Args:
+        ----
             query_embedding: Dense vector of the search query.
             session_id: Only search within this session's memories.
             top_k: Maximum number of results to return.
 
         Returns:
+        -------
             List of (MemoryItem, score) tuples, best match first.
             Score is cosine similarity — higher is more relevant.
+
         """
 
     @abstractmethod
@@ -102,16 +107,20 @@ class BaseStore(ABC):
 
     @classmethod
     def create(cls, config: MemoryConfig) -> "BaseStore":
-        """Factory — picks the right backend from the config.
+        """Pick the right backend from config and return a ready store instance.
 
         Args:
+        ----
             config: MemoryConfig with store_type set.
 
         Returns:
+        -------
             A concrete BaseStore instance ready to use.
 
         Raises:
+        ------
             ConfigurationError: If store_type is not recognised.
+
         """
         if config.store_type == "memory":
             logger.debug("creating InMemoryStore")
@@ -122,8 +131,7 @@ class BaseStore(ABC):
         elif config.store_type == "qdrant":
             # QdrantStore comes in Phase 6
             raise ConfigurationError(
-                "Qdrant store is not yet implemented. "
-                "Use store_type='memory' or 'chroma' for now."
+                "Qdrant store is not yet implemented. Use store_type='memory' or 'chroma' for now."
             )
         else:
             raise ConfigurationError(
@@ -185,10 +193,7 @@ class InMemoryStore(BaseStore):
             return []
 
         # score every item
-        scored = [
-            (item, _cosine_similarity(query_embedding, item.embedding))
-            for item in items
-        ]
+        scored = [(item, _cosine_similarity(query_embedding, item.embedding)) for item in items]
 
         # sort by score descending and return top_k
         scored.sort(key=lambda x: x[1], reverse=True)

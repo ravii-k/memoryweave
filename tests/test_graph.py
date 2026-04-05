@@ -164,9 +164,7 @@ class TestDeleteSession:
 
 
 class TestPersistence:
-    def test_save_and_load(
-        self, kg: KnowledgeGraph, tmp_path: "pytest.TempPathFactory"
-    ) -> None:
+    def test_save_and_load(self, kg: KnowledgeGraph, tmp_path: "pytest.TempPathFactory") -> None:
         kg.add_entities([make_entity("Ravi", "PERSON")], "default")
         kg.add_facts([make_fact("Ravi", "likes", "Python")], "default")
 

@@ -127,9 +127,7 @@ class TestFactAccuracy:
             assert results[0].predicate == results[0].predicate.lower()
 
     def test_confidence_range(self, extractor: Extractor) -> None:
-        results = extractor.extract_facts(
-            "Ravi Kashyap works at Anthropic in San Francisco."
-        )
+        results = extractor.extract_facts("Ravi Kashyap works at Anthropic in San Francisco.")
         for f in results:
             assert 0.0 < f.confidence <= 1.0
 
@@ -139,22 +137,16 @@ class TestPipelineAccuracy:
 
     def test_intro_sentence(self, extractor: Extractor) -> None:
         # the most common first message a user sends to any AI app
-        entities, facts = extractor.extract(
-            "Hi, my name is Ravi and I work as a Python developer."
-        )
+        entities, facts = extractor.extract("Hi, my name is Ravi and I work as a Python developer.")
         assert len(entities) > 0 or len(facts) > 0
 
     def test_preference_sentence(self, extractor: Extractor) -> None:
-        entities, facts = extractor.extract(
-            "I prefer Python over JavaScript for backend work."
-        )
+        entities, facts = extractor.extract("I prefer Python over JavaScript for backend work.")
         assert isinstance(entities, list)
         assert isinstance(facts, list)
 
     def test_location_sentence(self, extractor: Extractor) -> None:
-        entities, facts = extractor.extract(
-            "I am based in Meerut, Uttar Pradesh, India."
-        )
+        entities, facts = extractor.extract("I am based in Meerut, Uttar Pradesh, India.")
         assert len(entities) > 0
 
     def test_work_context(self, extractor: Extractor) -> None:

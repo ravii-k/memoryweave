@@ -40,11 +40,14 @@ def get_logger(name: str) -> logging.Logger:
         logger.debug("extracting entities from %d chars", len(text))
 
     Args:
+    ----
         name: Usually just pass __name__ — it gives you a logger
             like "memoryweave.extractor" or "memoryweave.store".
 
     Returns:
+    -------
         A Logger instance under the memoryweave namespace.
+
     """
     return logging.getLogger(name)
 
@@ -56,14 +59,17 @@ def configure_logging(level: str | int = "info") -> None:
     Without calling this, logging is effectively silent (NullHandler).
 
     Args:
+    ----
         level: Log level as a string ("debug", "info", "warning",
             "error") or a logging constant (logging.DEBUG etc).
             Defaults to "info".
 
     Example:
+    -------
         >>> import memoryweave
         >>> memoryweave.configure_logging("debug")
         # now all memoryweave logs appear in stdout
+
     """
     root = logging.getLogger(_ROOT_LOGGER_NAME)
 
@@ -71,9 +77,7 @@ def configure_logging(level: str | int = "info") -> None:
     if isinstance(level, str):
         resolved = _LEVEL_MAP.get(level.lower())
         if resolved is None:
-            raise ValueError(
-                f"Unknown log level {level!r}. Choose from: {list(_LEVEL_MAP.keys())}"
-            )
+            raise ValueError(f"Unknown log level {level!r}. Choose from: {list(_LEVEL_MAP.keys())}")
         level = resolved
 
     root.setLevel(level)

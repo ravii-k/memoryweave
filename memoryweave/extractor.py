@@ -40,13 +40,15 @@ _USEFUL_LABELS = {
 class EntityResult:
     """A single entity extracted from text.
 
-    Attributes:
+    Attributes
+    ----------
         text: The entity as it appears in the source text (e.g. "Ravi Kashyap").
         label: Entity type — PERSON, ORG, DATE, GPE, etc.
         confidence: How confident the model is. spaCy doesn't give this
             directly so we default to 1.0 for matched entities.
         start: Character offset where the entity starts in the source text.
         end: Character offset where it ends.
+
     """
 
     def __init__(
@@ -78,13 +80,15 @@ class FactResult:
     Keeping it simple with SPO triples for now. Might move to a more
     expressive representation later if the graph queries need it.
 
-    Attributes:
+    Attributes
+    ----------
         subject: Who or what the fact is about (e.g. "Ravi").
         predicate: The relationship (e.g. "prefers", "works at").
         obj: The object of the fact (e.g. "Python", "Anthropic").
         confidence: Extraction confidence score (0.0-1.0).
         temporal: Time reference if there is one (e.g. "since 2022").
             Empty string if the fact has no temporal component.
+
     """
 
     def __init__(
@@ -122,7 +126,9 @@ class Extractor:
     each client instance should have its own Extractor.
 
     Args:
+    ----
         config: Controls which spaCy model to load and other NLP settings.
+
     """
 
     def __init__(self, config: MemoryConfig) -> None:
@@ -149,15 +155,19 @@ class Extractor:
         by (text, label) so the same entity mentioned twice only appears once.
 
         Args:
+        ----
             text: Raw input text to process. Can be a sentence, paragraph,
                 or full document.
 
         Returns:
+        -------
             List of EntityResult objects, deduplicated, sorted by position.
             Empty list if no useful entities found.
 
         Raises:
+        ------
             ExtractionError: If text is empty or the model fails.
+
         """
         if not text or not text.strip():
             raise ExtractionError("cannot extract entities from empty text")
@@ -184,13 +194,17 @@ class Extractor:
         than precision. Will improve this in future phases.
 
         Args:
+        ----
             text: Raw input text to process.
 
         Returns:
+        -------
             List of FactResult triples. Empty list if none found.
 
         Raises:
+        ------
             ExtractionError: If text is empty or the model fails.
+
         """
         if not text or not text.strip():
             raise ExtractionError("cannot extract facts from empty text")
@@ -211,13 +225,17 @@ class Extractor:
         pipelines instead of parsing the same text twice.
 
         Args:
+        ----
             text: Raw input text to process.
 
         Returns:
+        -------
             Tuple of (entities, facts).
 
         Raises:
+        ------
             ExtractionError: If text is empty or the model fails.
+
         """
         if not text or not text.strip():
             raise ExtractionError("cannot extract from empty text")
@@ -272,9 +290,7 @@ class Extractor:
                 continue
 
             subjects = [t for t in root.children if t.dep_ in ("nsubj", "nsubjpass")]
-            objects = [
-                t for t in root.children if t.dep_ in ("dobj", "attr", "pobj", "acomp")
-            ]
+            objects = [t for t in root.children if t.dep_ in ("dobj", "attr", "pobj", "acomp")]
 
             for prep in root.children:
                 if prep.dep_ == "prep":

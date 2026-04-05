@@ -82,17 +82,11 @@ class TestEdgeCases:
         assert isinstance(results, list)
 
     def test_numbers_and_dates(self, extractor: Extractor) -> None:
-        results = extractor.extract_entities(
-            "Ravi was born in 1995 and started coding in 2010."
-        )
+        results = extractor.extract_entities("Ravi was born in 1995 and started coding in 2010.")
         assert isinstance(results, list)
 
     def test_multiple_sentences(self, extractor: Extractor) -> None:
-        text = (
-            "My name is Ravi Kashyap. "
-            "I work at Anthropic. "
-            "I prefer Python over JavaScript."
-        )
+        text = "My name is Ravi Kashyap. I work at Anthropic. I prefer Python over JavaScript."
         entities, facts = extractor.extract(text)
         assert isinstance(entities, list)
         assert isinstance(facts, list)

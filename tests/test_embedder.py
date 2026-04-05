@@ -155,7 +155,4 @@ class TestSimilarity:
     def test_symmetry(self, embedder: Embedder) -> None:
         vec1 = embedder.embed("Ravi likes Python.")
         vec2 = embedder.embed("Python is Ravi's favourite language.")
-        assert (
-            abs(embedder.similarity(vec1, vec2) - embedder.similarity(vec2, vec1))
-            < 0.001
-        )
+        assert abs(embedder.similarity(vec1, vec2) - embedder.similarity(vec2, vec1)) < 0.001

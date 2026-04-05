@@ -24,12 +24,14 @@ logger = get_logger(__name__)
 class MemoryContext:
     """The result of a memory.get() call — ready to inject into a prompt.
 
-    Attributes:
+    Attributes
+    ----------
         summary: Plain-text summary of relevant memories. Inject this
             directly into the LLM system prompt.
         facts: List of (fact_text, score) tuples from the knowledge graph.
         entries: List of (MemoryItem, score) tuples from the vector store.
         scores: Flat list of final fusion scores for each entry.
+
     """
 
     def __init__(
@@ -64,7 +66,9 @@ class Ranker:
     signals into a single ranked list and build the context summary.
 
     Args:
+    ----
         config: MemoryConfig with vector_weight and graph_weight set.
+
     """
 
     def __init__(self, config: MemoryConfig) -> None:
@@ -79,12 +83,15 @@ class Ranker:
         """Fuse vector and graph results into a MemoryContext.
 
         Args:
+        ----
             vector_results: List of (MemoryItem, score) from BaseStore.search().
             graph_results: List of (fact_text, score) from KnowledgeGraph.query().
             top_k: Max entries to include. Defaults to config.top_k.
 
         Returns:
+        -------
             A MemoryContext with summary, facts, entries, and scores.
+
         """
         k = top_k if top_k is not None else self.config.top_k
         vw = self.config.vector_weight
@@ -104,9 +111,7 @@ class Ranker:
             graph_max = 1.0
 
         # build a text → graph_score lookup for fusion
-        graph_lookup: dict[str, float] = {
-            text: score / graph_max for text, score in graph_results
-        }
+        graph_lookup: dict[str, float] = {text: score / graph_max for text, score in graph_results}
 
         # score each vector result with fusion
         fused: list[tuple[MemoryItem, float]] = []
@@ -117,9 +122,7 @@ class Ranker:
                     graph_lookup[gtext]
                     for gtext in graph_lookup
                     if any(
-                        word in item.text.lower()
-                        for word in gtext.lower().split()
-                        if len(word) > 3
+                        word in item.text.lower() for word in gtext.lower().split() if len(word) > 3
                     )
                 ),
                 default=0.0,
