@@ -12,6 +12,8 @@ Phase 4, Chapter 4.1 — Ravi Kashyap 2026-04-03
 
 from __future__ import annotations
 
+import asyncio
+
 from memoryweave.config import MemoryConfig
 from memoryweave.embedder import Embedder
 from memoryweave.errors import MemoryWeaveError
@@ -127,12 +129,23 @@ class MemoryWeave:
         logger.debug("add() called for session %r, %d chars", session_id, len(text))
 
         try:
+            # Step 0 — deduplication check
+            probe = self.embedder.embed(text)
+            existing = self.store.search(
+                query_embedding=probe,
+                session_id=session_id,
+                top_k=1,
+            )
+            if existing and existing[0][1] >= self._dedup_threshold:
+                logger.debug("add() skipping duplicate — similarity %.3f", existing[0][1])
+                return existing[0][0]
+
             # Step 1 — extract entities and facts
             entities, facts = self.extractor.extract(text)
             logger.debug("extracted %d entities, %d facts", len(entities), len(facts))
 
-            # Step 2 — embed the raw text
-            embedding = self.embedder.embed(text)
+            # Step 2 — embed (reuse probe embedding from dedup check)
+            embedding = probe
 
             # Step 3 — store in vector store
             item = MemoryItem(
@@ -243,6 +256,26 @@ class MemoryWeave:
             logger.debug("forget() complete for session %r", sid)
         except Exception as e:
             raise MemoryWeaveError(f"forget() failed: {e}") from e
+
+    async def async_add(
+        self,
+        text: str,
+        metadata: dict | None = None,
+    ) -> MemoryItem:
+        """Non-blocking add — runs in a thread pool. Use in async/FastAPI contexts."""
+        return await asyncio.to_thread(self.add, text, metadata)
+
+    async def async_get(
+        self,
+        query: str,
+        top_k: int | None = None,
+    ) -> MemoryContext:
+        """Non-blocking get — runs in a thread pool. Use in async/FastAPI contexts."""
+        return await asyncio.to_thread(self.get, query, top_k)
+
+    async def async_forget(self, session_id: str | None = None) -> None:
+        """Non-blocking forget — runs in a thread pool."""
+        await asyncio.to_thread(self.forget, session_id)
 
     def stats(self, session_id: str | None = None) -> dict:
         """Return memory stats for a session.
