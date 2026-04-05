@@ -41,11 +41,16 @@ app.add_middleware(
 # one MemoryWeave instance per session — stored in a dict
 # in production this would be backed by Redis or a DB
 _sessions: dict[str, MemoryWeave] = {}
+_MAX_SESSIONS = 500  # prevent unbounded memory growth
 
 
 def _get_client(session_id: str) -> MemoryWeave:
     """Get or create a MemoryWeave client for a session."""
     if session_id not in _sessions:
+        if len(_sessions) >= _MAX_SESSIONS:
+            oldest = next(iter(_sessions))
+            del _sessions[oldest]
+            logger.warning("session limit reached — evicted oldest session %r", oldest)
         _sessions[session_id] = MemoryWeave(MemoryConfig(default_session_id=session_id))
         logger.debug("created new session client for %r", session_id)
     return _sessions[session_id]
@@ -127,6 +132,8 @@ async def add_memory(req: AddRequest) -> MemoryItemResponse:
     """Extract, embed, and store a memory from raw text."""
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="text cannot be empty")
+    if len(req.text) > 10_000:
+        raise HTTPException(status_code=400, detail="text too long — max 10,000 characters")
 
     try:
         client = _get_client(req.session_id)
