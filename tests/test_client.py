@@ -168,12 +168,36 @@ class TestStats:
 
 
 class TestDeduplication:
-    def test_duplicate_text_not_stored_twice(self, memory: MemoryWeave) -> None:
-        memory.add("Ravi prefers Python for everything.")
-        memory.add("Ravi prefers Python for everything.")
-        assert memory.stats()["vector_count"] == 1
+    @pytest.fixture
+    def fresh(self) -> MemoryWeave:
+        """Fresh isolated memory instance for dedup tests."""
+        return MemoryWeave(MemoryConfig(default_session_id="dedup-isolated"))
 
-    def test_similar_but_not_identical_is_stored(self, memory: MemoryWeave) -> None:
-        memory.add("Ravi prefers Python.")
-        memory.add("Ravi loves JavaScript.")
-        assert memory.stats()["vector_count"] == 2
+    def test_duplicate_text_not_stored_twice(self, fresh: MemoryWeave) -> None:
+        fresh.add("Ravi prefers Python for everything.")
+        fresh.add("Ravi prefers Python for everything.")
+        assert fresh.stats()["vector_count"] == 1
+
+    def test_similar_but_not_identical_is_stored(self, fresh: MemoryWeave) -> None:
+        fresh.add("Ravi prefers Python.")
+        fresh.add("Ravi loves JavaScript.")
+        assert fresh.stats()["vector_count"] == 2
+
+
+class TestAsyncMethods:
+    @pytest.mark.asyncio
+    async def test_async_add_returns_item(self, memory: MemoryWeave) -> None:
+        item = await memory.async_add("Ravi uses async Python.")
+        assert item.text == "Ravi uses async Python."
+
+    @pytest.mark.asyncio
+    async def test_async_get_returns_context(self, memory: MemoryWeave) -> None:
+        await memory.async_add("Ravi likes FastAPI.")
+        ctx = await memory.async_get("What framework?")
+        assert ctx.has_results
+
+    @pytest.mark.asyncio
+    async def test_async_forget_clears_store(self, memory: MemoryWeave) -> None:
+        await memory.async_add("Temporary memory.")
+        await memory.async_forget()
+        assert memory.stats()["vector_count"] == 0

@@ -137,7 +137,7 @@ async def add_memory(req: AddRequest) -> MemoryItemResponse:
 
     try:
         client = _get_client(req.session_id)
-        item = client.add(req.text, metadata=req.metadata)
+        item = await client.async_add(req.text, metadata=req.metadata)
         return MemoryItemResponse(
             id=item.id,
             text=item.text,
@@ -157,7 +157,7 @@ async def get_memory(req: GetRequest) -> MemoryContextResponse:
 
     try:
         client = _get_client(req.session_id)
-        ctx = client.get(req.query, top_k=req.top_k)
+        ctx = await client.async_get(req.query, top_k=req.top_k)
 
         entries = [
             ContextEntryResponse(
@@ -187,7 +187,7 @@ async def forget_memory(req: ForgetRequest) -> dict[str, str]:
     """Wipe all memories for a session."""
     try:
         if req.session_id in _sessions:
-            _sessions[req.session_id].forget()
+            await _sessions[req.session_id].async_forget()
             del _sessions[req.session_id]
         return {"status": "ok", "session_id": req.session_id}
     except Exception as e:
