@@ -4,8 +4,8 @@
 
 [![CI](https://github.com/ravii-k/memoryweave/actions/workflows/ci.yml/badge.svg)](https://github.com/ravii-k/memoryweave/actions)
 [![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12-blue)](https://pypi.org/project/memoryweave/)
+[![PyPI](https://img.shields.io/badge/pypi-v1.0.0-orange)](https://pypi.org/project/memoryweave/1.0.0/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-orange)](CHANGELOG.md)
 
 ---
 
@@ -43,16 +43,12 @@ print(ctx.summary)
 
 ```bash
 pip install memoryweave
+python -m spacy download en_core_web_sm
 ```
 
 **Optional extras:**
 ```bash
 pip install memoryweave[server]    # FastAPI REST server
-```
-
-**Download the NLP model on first use:**
-```bash
-python -m spacy download en_core_web_sm
 ```
 
 ---
@@ -64,19 +60,14 @@ python -m spacy download en_core_web_sm
 ```python
 from memoryweave import MemoryWeave, MemoryConfig
 
-# in-memory store (default) — great for development
 memory = MemoryWeave()
-
-# add memories
 memory.add("My name is Ravi Kashyap.")
 memory.add("I work at a startup building AI tools in India.")
 memory.add("I prefer Python and FastAPI for backend development.")
 
-# retrieve relevant context
 ctx = memory.get("What does this person do for work?")
 print(ctx.summary)
 
-# check stats
 print(memory.stats())
 # → {'session_id': 'default', 'vector_count': 3, 'node_count': 4, 'edge_count': 2}
 ```
@@ -101,9 +92,10 @@ ctx = memory.get("What are this user's preferences?")
 Start the server:
 ```bash
 uvicorn memoryweave.server:app --reload
+# → http://localhost:8000/docs
 ```
 
-Then from TypeScript/JavaScript:
+TypeScript:
 ```typescript
 import { MemoryWeave } from "@memoryweave/sdk";
 
@@ -113,15 +105,11 @@ const ctx = await memory.get("What language does the user prefer?");
 console.log(ctx.summary);
 ```
 
-Or with plain `curl`:
+curl:
 ```bash
 curl -X POST http://localhost:8000/memory/add \
   -H "Content-Type: application/json" \
   -d '{"text": "Ravi prefers Python.", "session_id": "demo"}'
-
-curl -X POST http://localhost:8000/memory/get \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What language?", "session_id": "demo"}'
 ```
 
 ---
@@ -131,15 +119,15 @@ curl -X POST http://localhost:8000/memory/get \
 ```
 memory.add(text)
   │
-  ├─ Extractor (spaCy)         → entities + facts
+  ├─ Extractor (spaCy)              → entities + facts
   ├─ Embedder (sentence-transformers) → 384-dim vector
-  ├─ BaseStore (InMemory/Chroma)     → vector storage
-  └─ KnowledgeGraph (NetworkX) → entity + fact graph
+  ├─ BaseStore (InMemory/Chroma)    → vector storage
+  └─ KnowledgeGraph (NetworkX)     → entity + fact graph
 
 memory.get(query)
   │
   ├─ Embedder → query vector
-  ├─ BaseStore.search() → top-k similar memories
+  ├─ BaseStore.search()  → top-k similar memories
   ├─ KnowledgeGraph.query() → related facts
   └─ Ranker.fuse() → weighted blend → MemoryContext
 ```
@@ -154,22 +142,20 @@ memory.get(query)
 from memoryweave import MemoryConfig
 
 config = MemoryConfig(
-    store_type="memory",        # "memory" | "chroma" | "qdrant"
-    store_path="./mw_db",       # path for chroma/qdrant
-    embedding_model="all-MiniLM-L6-v2",  # any sentence-transformers model
-    spacy_model="en_core_web_sm",        # any spaCy model
-    top_k=5,                    # memories to retrieve per get()
-    vector_weight=0.6,          # fusion weight for vector search
-    graph_weight=0.4,           # fusion weight for graph search
-    default_session_id="default",        # session namespace
+    store_type="memory",             # "memory" | "chroma"
+    store_path="./mw_db",            # path for chroma
+    embedding_model="all-MiniLM-L6-v2",
+    spacy_model="en_core_web_sm",
+    top_k=5,
+    vector_weight=0.6,
+    graph_weight=0.4,
+    default_session_id="default",
 )
 ```
 
 ---
 
 ## REST API
-
-Start the server: `uvicorn memoryweave.server:app --reload`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -179,7 +165,7 @@ Start the server: `uvicorn memoryweave.server:app --reload`
 | `DELETE` | `/memory/forget` | Wipe a session |
 | `GET` | `/memory/stats` | Session stats |
 
-Full interactive docs at **http://localhost:8000/docs**
+Interactive docs at **http://localhost:8000/docs**
 
 ---
 
@@ -192,11 +178,11 @@ Full interactive docs at **http://localhost:8000/docs**
 ✅ Phase 4 — Core memory API v0.1.0
 ✅ Phase 5 — TypeScript SDK
 ✅ Phase 6 — FastAPI REST server
-⬜ Phase 7 — Documentation
-⬜ Phase 8 — Launch v1.0.0 (Product Hunt + Hacker News)
+✅ Phase 7 — Documentation
+✅ Phase 8 — Launch v1.0.0
 ```
 
-**Test coverage:** 225+ tests · 90%+ coverage · CI green on Python 3.10/3.11/3.12
+**Test coverage:** 225 tests · 91% coverage · CI green on Python 3.10/3.11/3.12 · Live on [PyPI](https://pypi.org/project/memoryweave/1.0.0/)
 
 ---
 
@@ -208,7 +194,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 git clone https://github.com/ravii-k/memoryweave.git
 cd memoryweave
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,server]"
 python -m spacy download en_core_web_sm
 pytest tests/ -v
 ```
@@ -221,4 +207,4 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
-*Built by [Ravi Kashyap](https://github.com/ravii-k) · Started March 2026*
+*Built by [Ravi Kashyap](https://github.com/ravii-k) · v1.0.0 shipped April 2026*
