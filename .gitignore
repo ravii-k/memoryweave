@@ -112,3 +112,13 @@ docs/node_modules/
 *.tmp
 .benchmarks/
 profiling/
+
+# Build artifacts
+dist/
+coverage.xml
+.coverage
+coverage/
+
+# TypeScript build output
+sdk/typescript/dist/
+sdk/typescript/node_modules/
