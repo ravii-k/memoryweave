@@ -48,6 +48,7 @@ class MemoryWeave:
 
     def __init__(self, config: MemoryConfig | None = None) -> None:
         self.config = config or MemoryConfig()
+        self._dedup_threshold: float = 0.98
 
         # lazy-init the heavy components — spaCy and sentence-transformers
         # both take ~1s to load, so we defer until first use

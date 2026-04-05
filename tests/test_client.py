@@ -165,3 +165,15 @@ class TestStats:
         assert m.stats()["vector_count"] == 0
         m.add("Ravi likes Python.")
         assert m.stats()["vector_count"] == 1
+
+
+class TestDeduplication:
+    def test_duplicate_text_not_stored_twice(self, memory: MemoryWeave) -> None:
+        memory.add("Ravi prefers Python for everything.")
+        memory.add("Ravi prefers Python for everything.")
+        assert memory.stats()["vector_count"] == 1
+
+    def test_similar_but_not_identical_is_stored(self, memory: MemoryWeave) -> None:
+        memory.add("Ravi prefers Python.")
+        memory.add("Ravi loves JavaScript.")
+        assert memory.stats()["vector_count"] == 2
