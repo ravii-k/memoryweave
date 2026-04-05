@@ -138,3 +138,72 @@ ctx.has_results  # True if there is any context to inject
 ---
 
 *More examples in the [examples/](../examples/) directory.*
+
+---
+
+## 7. Server authentication
+
+Set `MEMORYWEAVE_API_KEY` to protect your server:
+```bash
+MEMORYWEAVE_API_KEY=my-secret-key uvicorn memoryweave.server:app --reload
+```
+
+All `/memory/*` endpoints then require the header:
+```bash
+curl -X POST http://localhost:8000/memory/add \
+  -H "X-API-Key: my-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Ravi prefers Python.", "session_id": "demo"}'
+```
+
+The `/health` endpoint is always public. If `MEMORYWEAVE_API_KEY` is not set, the server runs unauthenticated (useful for local development).
+
+---
+
+## 8. LLM Adapters (OpenAI + Anthropic)
+
+Adapters handle memory injection automatically — no manual prompt building needed.
+
+### OpenAI
+```python
+from openai import OpenAI
+from memoryweave import MemoryWeave
+from memoryweave.adapters.openai import OpenAIAdapter
+
+memory = MemoryWeave()
+adapter = OpenAIAdapter(memory, system_prompt="You are a helpful assistant.")
+client = OpenAI()
+
+messages = [{"role": "user", "content": "What stack should I use?"}]
+
+# inject memory into system prompt automatically
+messages = adapter.prepare(messages)
+response = client.chat.completions.create(model="gpt-4o", messages=messages)
+
+# store the user turn for future sessions
+adapter.remember(messages)
+```
+
+### Anthropic
+```python
+import anthropic
+from memoryweave import MemoryWeave
+from memoryweave.adapters.anthropic import AnthropicAdapter
+
+memory = MemoryWeave()
+adapter = AnthropicAdapter(memory)
+client = anthropic.Anthropic()
+
+messages = [{"role": "user", "content": "What stack should I use?"}]
+
+# returns (system_string, messages) for Anthropic's API
+system, messages = adapter.prepare(messages)
+response = client.messages.create(
+    model="claude-opus-4-6",
+    system=system,
+    messages=messages,
+    max_tokens=1024,
+)
+
+adapter.remember(messages)
+```

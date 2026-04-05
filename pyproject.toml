@@ -94,6 +94,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN201", "ANN001", "D101", "D102", "D103"]
+"demo_usage.py" = ["D"]
 
 [tool.coverage.run]
 source = ["memoryweave"]
