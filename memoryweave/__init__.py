@@ -21,7 +21,7 @@ from memoryweave.logger import configure_logging
 from memoryweave.ranker import MemoryContext
 
 # keeping version in sync with pyproject.toml
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Ravi Kashyap"
 __license__ = "MIT"
 
