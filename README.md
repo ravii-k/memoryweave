@@ -1,5 +1,7 @@
 # MemoryWeave
-
+---
+> *We are all living in a simulation*
+---
 > Give your LLM a long-term memory in three lines of code.
 
 [![CI](https://github.com/ravii-k/memoryweave/actions/workflows/ci.yml/badge.svg)](https://github.com/ravii-k/memoryweave/actions)
